@@ -1,131 +1,90 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Insurance Claim Live Agent Team</title>
+    <meta name="theme-color" content="#06162e" />
+    <title>Neurotry · Tu tarjeta de bienvenida</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Patrick+Hand&family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./styles.css?v=three-column-4" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=neurotry-1" />
   </head>
   <body>
-    <div class="desk">
-      <header class="desk-bar">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <div>
-            <h1>Insurance Claim Live Agent Team</h1>
-            <p id="modelLabel" class="brand-sub">Connecting to Gemini</p>
-          </div>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+    <div id="cameraFlash" class="camera-flash" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="wordmark" href="/" aria-label="Neurotry inicio"><span class="wordmark-mark">N</span><span>NEUROTRY</span></a>
+      <div class="top-status"><span id="liveDot" class="live-dot"></span><span id="callStatus">Preparando sesión</span></div>
+      <button id="newSessionButton" class="quiet-button" type="button">Nueva tarjeta</button>
+    </header>
+
+    <main class="workspace">
+      <aside class="control-rail panel" aria-label="Cámara y conversación">
+        <div class="section-label">01 · TU RETRATO</div>
+        <div id="cameraStage" class="camera-stage">
+          <video id="cameraPreview" autoplay muted playsinline></video>
+          <div class="camera-empty"><span class="camera-glyph"></span><strong>Enciende tu cámara</strong><small>La foto solo vive durante esta sesión.</small></div>
+          <div class="camera-caption"><span></span>Cámara activa</div>
         </div>
-        <button id="openPacket" class="ghost-button" type="button">Adjuster packet</button>
-      </header>
+        <div class="primary-controls">
+          <button id="cameraButton" class="action-button" type="button"><span class="camera-icon" aria-hidden="true"></span><span>Encender cámara</span></button>
+          <button id="micButton" class="action-button secondary" type="button"><span class="mic-icon" aria-hidden="true"></span><span>Hablar</span></button>
+        </div>
+        <p class="consent-note">La IA pedirá tu permiso antes de congelar un frame. Puedes repetir la foto cuando quieras.</p>
 
-      <main class="desk-layout">
-        <aside class="side media-column" aria-label="Live call and camera">
-          <section class="card call-card">
-            <div class="card-head">
-              <span class="card-kicker">Live call</span>
-              <span id="callStatus" class="pill">Connecting</span>
-            </div>
+        <div class="activity-block">
+          <div class="section-label">PROCESOS EN VIVO</div>
+          <ul id="activityList" class="activity-list" aria-live="polite">
+            <li class="activity-empty">Las tareas aparecerán aquí.</li>
+          </ul>
+        </div>
+      </aside>
 
-            <div id="avatarStage" class="avatar-stage" data-state="idle" hidden>
-              <video id="avatarVideo" playsinline aria-label="Live AI claim assistant" hidden></video>
-              <span class="avatar-disclosure">AI avatar</span>
-              <div class="avatar-identity">
-                <span id="avatarName">Claim assistant</span>
-                <span id="avatarStatus" role="status">Start a conversation when you’re ready</span>
-              </div>
-              <button id="resumeAvatar" class="avatar-resume" type="button" hidden>Play voice and video</button>
-            </div>
+      <section class="card-lab" aria-label="Vista previa de tarjeta">
+        <div class="lab-heading"><div><span class="section-label">02 · RESULTADO</span><h1>Tu identidad,<br />lista para conectar.</h1></div><span id="progressBadge" class="progress-badge">0 / 5</span></div>
 
-            <div id="cameraStage" class="camera-stage" hidden>
-              <video id="cameraPreview" autoplay muted playsinline></video>
-              <span class="camera-tag"><span class="rec-dot" aria-hidden="true"></span> Agent is watching</span>
-            </div>
-
-            <div class="controls">
-              <button id="micButton" class="round-button" type="button" aria-label="Start live voice">
-                <span class="icon-mic" aria-hidden="true"></span>
-                <span class="round-label">Talk</span>
-              </button>
-              <button id="cameraButton" class="round-button" type="button" aria-label="Show the damage on camera">
-                <span class="icon-camera" aria-hidden="true"></span>
-                <span class="round-label">Show camera</span>
-              </button>
-              <button id="newIntakeButton" class="round-button subtle" type="button" aria-label="Start a new intake">
-                <span class="icon-new" aria-hidden="true"></span>
-                <span class="round-label">New intake</span>
-              </button>
-            </div>
-          </section>
-          <section class="card team-card">
-            <div class="card-head">
-              <span class="card-kicker">Claim team</span>
-              <span class="card-hint">Working in the background while the call continues</span>
-            </div>
-            <ul id="teamFeed" class="team-feed" tabindex="0" aria-label="Claim team activity"></ul>
-          </section>
-        </aside>
-
-        <section class="notebook-wrap" aria-label="Field notebook" tabindex="0">
-          <div class="notebook">
-            <div class="holes" aria-hidden="true"><span></span><span></span><span></span></div>
-            <div class="page-head">
-              <span id="pageDate">Claim intake notes</span>
-              <span id="pageAgent">Gemini 3.8 Live, field notes</span>
-            </div>
-            <div id="notes" class="notes"></div>
-            <div id="pinboard" class="pinboard"></div>
-            <div id="stamp" class="stamp" hidden></div>
-            <div id="pen" class="pen" hidden><span class="pen-nib" aria-hidden="true"></span> writing</div>
+        <article id="businessCard" class="business-card" aria-label="Tarjeta de presentación Neurotry">
+          <div class="card-grid" aria-hidden="true"></div>
+          <div class="card-orbit" aria-hidden="true"></div>
+          <div class="portrait-shell">
+            <div id="portraitPlaceholder" class="portrait-placeholder"><span></span></div>
+            <img id="profileImage" alt="Retrato para la tarjeta" hidden />
+            <div id="imageStatus" class="image-status">Esperando foto</div>
           </div>
-        </section>
-        <aside class="side conversation-column" aria-label="Transcript and claim checklist">
-          <section class="card transcript-card">
-            <div class="card-head">
-              <span class="card-kicker">Transcript</span>
-            </div>
-            <div id="transcript" class="transcript" aria-live="polite" tabindex="0" role="region" aria-label="Conversation transcript"></div>
+          <div class="identity-copy">
+            <div class="mini-wordmark">NEUROTRY<span>●</span></div>
+            <p id="cardDepartment" class="card-department">TU DEPARTAMENTO</p>
+            <h2 id="cardName">Tu nombre</h2>
+            <p id="cardDescription" class="card-description">Tu rol, superpoder o afición aparecerá aquí.</p>
+            <div class="card-footer"><span id="cardAge">— años</span><span>WELCOME / 2026</span></div>
+          </div>
+        </article>
 
-            <form id="textForm" class="text-entry">
-              <input
-                id="textInput"
-                type="text"
-                autocomplete="off"
-                placeholder="Or type what the claimant says..."
-                aria-label="Type a claimant response"
-              />
-              <button type="submit">Send</button>
-            </form>
-          </section>
+        <div class="download-row">
+          <div><strong id="resultTitle">Primero, tu foto</strong><span id="resultHint">Después conversaremos mientras creamos el avatar.</span></div>
+          <button id="downloadButton" class="download-button" type="button" disabled>Guardar como PDF <span>↗</span></button>
+        </div>
+      </section>
 
-          <section class="card needed-card">
-            <div class="card-head">
-              <span class="card-kicker">Still needed</span>
-              <span id="readiness" class="pill neutral">0% collected</span>
-            </div>
-            <ul id="neededList" class="needed-list" tabindex="0" aria-label="Information still needed"></ul>
-          </section>
+      <aside class="conversation-rail panel" aria-label="Conversación y datos">
+        <div class="section-label">03 · CONVERSACIÓN</div>
+        <div id="transcript" class="transcript" role="log" aria-live="polite"></div>
+        <form id="textForm" class="text-form">
+          <input id="textInput" type="text" autocomplete="off" placeholder="También puedes escribir aquí…" aria-label="Escribe una respuesta" />
+          <button type="submit" aria-label="Enviar">→</button>
+        </form>
 
-        </aside>
-      </main>
-    </div>
-
-    <dialog id="packetDialog" class="packet-dialog">
-      <div class="dialog-header">
-        <h2>Adjuster handoff packet</h2>
-        <a id="downloadPacket" class="text-button" href="#" download>Download packet + evidence</a><button id="closePacket" type="button" aria-label="Close packet">Close</button>
-      </div>
-      <pre id="packetMarkdown"></pre><p>Local demo: nothing is sent to an adjuster. Intakes expire after 30 minutes without activity. Download to keep a copy.</p>
-    </dialog>
+        <div class="checklist-block">
+          <div class="checklist-head"><span class="section-label">TU PERFIL</span><span id="percentLabel">0%</span></div>
+          <ul id="checklist" class="checklist"></ul>
+        </div>
+      </aside>
+    </main>
 
     <canvas id="frameCanvas" hidden></canvas>
-    <script src="./avatar.js?v=4"></script>
-    <script src="./app.js?v=voice-turns-2"></script>
+    <script src="./app.js?v=neurotry-1"></script>
   </body>
 </html>

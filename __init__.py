@@ -1,5 +1,5 @@
-"""AI Insurance Claim Intake Agent."""
+"""Neurotry live employee onboarding application."""
 
-from .agent import root_agent
+from .onboarding import UserProfile
 
-__all__ = ["root_agent"]
+__all__ = ["UserProfile"]
