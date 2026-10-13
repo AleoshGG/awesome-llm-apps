@@ -1,6 +1,0 @@
-node_modules/
-dist/
-artifacts/
-output/
-package-lock.json
-public/needle-extension.zip
