@@ -1,24 +1,24 @@
 # Insurance Claim Live Agent Team
 
-An insurance claim agent that can talk, listen, see damage through your camera, and draw incident sketches while the conversation continues. Built with Gemini 3.8 Live, with an optional live avatar for synchronized voice and video.
+Un agente de reclamos de seguros que puede hablar, escuchar, ver los daños a través de tu cámara y dibujar bocetos del incidente mientras la conversación continúa. Desarrollado con Gemini 3.8 Live, con un avatar en vivo opcional para voz y video sincronizados.
 
-The agent records details in a field notebook, checks mock policy records, and asks for missing information. A background agent team applies intake rules and prepares a downloadable claim packet with notes, captured evidence, and illustrations for human review.
+El agente registra los detalles en un cuaderno de campo, verifica registros de pólizas simuladas y solicita la información faltante. Un equipo de agentes en segundo plano aplica reglas de admisión y prepara un paquete de reclamo descargable con notas, evidencia capturada e ilustraciones para revisión humana.
 
 ![Notebook and evidence example from the original voice and camera interface](assets/insurance-claim-live-agent-team-notebook.png)
 
-## Features
+## Características
 
-* **Live conversation:** speak or type, with live transcripts.
-* **Optional avatar:** synchronized voice and video, with Kira and Kore as the example pairing.
-* **Camera evidence:** captured frames include captions and verification status.
-* **Incident sketches:** illustrations based on the claimant's description, updated after corrections.
-* **Claim notebook:** extracted facts, missing information, policy checks, and routing.
-* **Packet download:** ZIP with Markdown notes, an evidence manifest, captured photos, and sketches.
-* **Desktop layout:** call and camera on the left, notes in the middle, transcript and checklist on the right. Mobile stacks the sections.
+* **Conversación en vivo:** habla o escribe, con transcripciones en tiempo real.
+* **Avatar opcional:** voz y video sincronizados, con Kira y Kore como combinación de ejemplo.
+* **Evidencia por cámara:** los fotogramas capturados incluyen descripciones y estado de verificación.
+* **Bocetos del incidente:** ilustraciones basadas en la descripción del reclamante, actualizadas tras correcciones.
+* **Cuaderno del reclamo:** hechos extraídos, información faltante, comprobaciones de póliza y enrutamiento.
+* **Descarga del paquete:** archivo ZIP con notas en Markdown, un manifiesto de evidencia, fotos capturadas y bocetos.
+* **Diseño para escritorio:** llamada y cámara a la izquierda, notas en el centro, transcripción y lista de verificación a la derecha. En dispositivos móviles se apilan las secciones.
 
-## Setup
+## Configuración
 
-Requires Python 3.12 and a Google API key with access to the configured models.
+Requiere Python 3.12 y una clave de API de Google con acceso a los modelos configurados.
 
 ```bash
 cd voice_ai_agents/insurance_claim_live_agent_team
@@ -28,145 +28,145 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Set these values in `.env`:
+Configura estos valores en `.env`:
 
 ```dotenv
 GOOGLE_GENAI_USE_VERTEXAI=False
-GOOGLE_API_KEY=your-google-api-key
+GOOGLE_API_KEY=tu-clave-de-api-de-google
 ```
 
-Start the app:
+Inicia la aplicación:
 
 ```bash
 python -m uvicorn live_demo.server:app --reload --host 127.0.0.1 --port 4177
 ```
 
-Open [localhost:4177](http://127.0.0.1:4177/).
+Abre [localhost:4177](http://127.0.0.1:4177/).
 
-* **Talk:** start the voice conversation.
-* **Show camera:** share the damage with the agent.
-* **Text box:** send a typed turn through the same live session.
-* **Adjuster packet:** preview and download the packet.
-* **New intake:** clear the current intake and stop its media and background work.
+* **Talk:** inicia la conversación por voz.
+* **Show camera:** comparte los daños con el agente.
+* **Text box:** envía un turno escrito a través de la misma sesión en vivo.
+* **Adjuster packet:** previsualiza y descarga el paquete.
+* **New intake:** limpia la admisión actual y detiene sus recursos multimedia y trabajo en segundo plano.
 
-Intake data is stored in memory. Download your packet before restarting or resetting; the app does not submit it to an insurer.
+Los datos de admisión se almacenan en memoria. Descarga tu paquete antes de reiniciar o restablecer; la aplicación no lo envía a una aseguradora.
 
-## Optional live avatar
+## Avatar en vivo opcional
 
-Requires Google Cloud access to Gemini Live and Application Default Credentials. The Python requirements include avatar support.
+Requiere acceso a Google Cloud para Gemini Live y Application Default Credentials. Los requisitos de Python incluyen soporte para el avatar.
 
 ```bash
 gcloud auth application-default login
 ```
 
-Add to `.env`, then restart the server:
+Agrégalo a `.env`, luego reinicia el servidor:
 
 ```dotenv
 FNOL_AVATAR_NAME=Kira
-FNOL_AVATAR_PROJECT=your-project-id
+FNOL_AVATAR_PROJECT=tu-id-de-proyecto
 FNOL_AVATAR_LOCATION=us-central1
 FNOL_AVATAR_VOICE=Kore
 ```
 
-* Keep `GOOGLE_API_KEY` and `GOOGLE_GENAI_USE_VERTEXAI=False` for claim processing and sketches.
-* Only the avatar connection uses the Cloud project and credentials above.
-* Leave both `FNOL_AVATAR_NAME` and `FNOL_AVATAR_IMAGE` unset for voice-only mode.
-* Playback requires Media Source Extensions and H.264/AAC support. Unsupported browsers use voice mode.
-* If autoplay is blocked, select **Play voice and video**. Decoder failures offer **Continue with voice**.
-* Avatar video is separate from the claimant's camera and never counts as evidence.
+* Mantén `GOOGLE_API_KEY` y `GOOGLE_GENAI_USE_VERTEXAI=False` para el procesamiento del reclamo y los bocetos.
+* Solo la conexión del avatar utiliza el proyecto de Cloud y las credenciales anteriores.
+* Deja sin definir tanto `FNOL_AVATAR_NAME` como `FNOL_AVATAR_IMAGE` para el modo de solo voz.
+* La reproducción requiere Media Source Extensions y soporte para H.264/AAC. Los navegadores no compatibles usan el modo de voz.
+* Si la reproducción automática se bloquea, selecciona **Play voice and video**. Los errores del decodificador ofrecen **Continue with voice**.
+* El video del avatar es independiente de la cámara del reclamante y nunca cuenta como evidencia.
 
-### Custom appearance
+### Apariencia personalizada
 
-Custom portraits require a Google Cloud project allowlisted for custom avatars.
+Los retratos personalizados requieren un proyecto de Google Cloud habilitado en la lista de permitidos para avatares personalizados.
 
 ```dotenv
-FNOL_AVATAR_IMAGE=/path/to/your/avatar.png
+FNOL_AVATAR_IMAGE=/ruta/a/tu/avatar.png
 FNOL_AVATAR_VOICE=Kore
 ```
 
-* Supply a PNG under 5 MB, at least 704 × 1280 pixels.
-* Paths can be absolute or relative to the app directory.
-* The image overrides `FNOL_AVATAR_NAME` as the API's avatar reference.
-* Stock-avatar clothing cannot be changed through a prompt.
+* Proporciona un archivo PNG de menos de 5 MB, de al menos 704 × 1280 píxeles.
+* Las rutas pueden ser absolutas o relativas al directorio de la aplicación.
+* La imagen anula `FNOL_AVATAR_NAME` como referencia del avatar para la API.
+* La vestimenta de los avatares predeterminados no se puede cambiar mediante un prompt.
 
-## Configuration
+## Configuración de variables
 
-Restart the server after changing `.env`.
+Reinicia el servidor después de cambiar `.env`.
 
-| Variable | Default | Purpose |
+| Variable | Valor por defecto | Propósito |
 | --- | --- | --- |
-| `FNOL_GEMINI_LIVE_MODEL` | `gemini-3.8-live` | Live conversation and avatar |
-| `FNOL_SKETCH_MODEL` | `gemini-3.1-flash-image` | Incident sketches |
-| `FNOL_VOICE` | `Kore` | Voice-only responses |
-| `FNOL_TRANSCRIPTION_VOCABULARY` | Empty | Comma-separated speech-recognition hints |
-| `FNOL_AVATAR_NAME` | Empty | Prebuilt avatar; empty disables it unless an image is set |
-| `FNOL_AVATAR_PROJECT` | Empty | Avatar Cloud project |
-| `FNOL_AVATAR_LOCATION` | `us-central1` | Avatar API region |
-| `FNOL_AVATAR_VOICE` | `Kore` | Avatar voice |
-| `FNOL_AVATAR_IMAGE` | Empty | Custom portrait path |
+| `FNOL_GEMINI_LIVE_MODEL` | `gemini-3.8-live` | Conversación en vivo y avatar |
+| `FNOL_SKETCH_MODEL` | `gemini-3.1-flash-image` | Bocetos del incidente |
+| `FNOL_VOICE` | `Kore` | Respuestas de solo voz |
+| `FNOL_TRANSCRIPTION_VOCABULARY` | Vacío | Pistas de reconocimiento de voz separadas por comas |
+| `FNOL_AVATAR_NAME` | Vacío | Avatar predeterminado; vacío lo desactiva salvo que se configure una imagen |
+| `FNOL_AVATAR_PROJECT` | Vacío | Proyecto de Cloud del avatar |
+| `FNOL_AVATAR_LOCATION` | `us-central1` | Región de la API del avatar |
+| `FNOL_AVATAR_VOICE` | `Kore` | Voz del avatar |
+| `FNOL_AVATAR_IMAGE` | Vacío | Ruta del retrato personalizado |
 
-Vocabulary hints are optional, do not establish identity, and do not guarantee spelling. The template includes no personal name overrides or fixed conversation script.
+Las pistas de vocabulario son opcionales, no establecen identidad y no garantizan la ortografía. La plantilla no incluye modificaciones de nombres personales ni un guion de conversación fijo.
 
-## Camera and sketch behavior
+## Comportamiento de la cámara y bocetos
 
-| Input | Behavior |
+| Entrada | Comportamiento |
 | --- | --- |
-| Camera off, with enough incident detail | Draw an illustration |
-| Camera on, showing damage | Capture and independently verify the frame |
-| Unclear camera view | Ask for a clearer view |
-| Explicit diagram request | Draw in either camera mode |
-| Correction to a sketch | Redraw using the corrected details |
+| Cámara apagada, con suficiente detalle del incidente | Dibuja una ilustración |
+| Cámara encendida, mostrando daños | Captura y verifica el fotograma de forma independiente |
+| Vista de cámara poco clara | Solicita una toma más clara |
+| Solicitud explícita de diagrama | Dibuja en cualquiera de los modos de cámara |
+| Corrección sobre un boceto | Vuelve a dibujar utilizando los detalles corregidos |
 
-* Greetings, vague descriptions, and no-loss inspections do not trigger automatic sketches.
-* Generated sketches are illustrations, not photographic evidence.
-* Documents described as available are not marked received until captured by the server.
+* Los saludos iniciales, descripciones vagas e inspecciones sin pérdidas no activan bocetos automáticos.
+* Los bocetos generados son ilustraciones, no evidencia fotográfica.
+* Los documentos descritos como disponibles no se marcan como recibidos hasta que el servidor los capture.
 
-## Try a claim
+## Prueba un reclamo
 
-Use this fictional example with the camera off:
+Usa este ejemplo ficticio con la cámara apagada:
 
-> I'm Maya Singh, policy H0-44721. Our basement flooded when the sump pump failed.
+> Soy Maya Singh, póliza H0-44721. Nuestro sótano se inundó cuando falló la bomba de sumidero.
 >
-> Nobody is hurt. Water entered by the stairs and spread across the carpet toward the boxes.
+> Nadie resultó herido. El agua entró por las escaleras y se extendió por la alfombra hacia las cajas.
 
-The agent checks the mock policy, records the facts, asks for missing details, and sketches when it has enough scene information.
+El agente consulta la póliza simulada, registra los hechos, pide los detalles faltantes y dibuja un boceto cuando tiene suficiente información de la escena.
 
-### Mock policies
+### Pólizas simuladas
 
-| Policy | Policyholder | Type | Status |
+| Póliza | Titular | Tipo | Estado |
 | --- | --- | --- | --- |
-| H0-44721 | Maya Singh | Homeowners | Active |
-| AUTO-90210 | Jordan Lee | Auto | Active |
-| RNT-3008 | Priya Shah | Renters | Active |
-| TRV-7711 | Alex Chen | Travel | Active |
-| MED-5520 | Sam Rivera | Medical reimbursement | Active |
-| AUTO-11111 | Chris Park | Auto | Lapsed |
+| H0-44721 | Maya Singh | Propietarios (*Homeowners*) | Activa |
+| AUTO-90210 | Jordan Lee | Auto | Activa |
+| RNT-3008 | Priya Shah | Inquilinos (*Renters*) | Activa |
+| TRV-7711 | Alex Chen | Viajes (*Travel*) | Activa |
+| MED-5520 | Sam Rivera | Reembolso médico | Activa |
+| AUTO-11111 | Chris Park | Auto | Vencida (*Lapsed*) |
 
-Unknown, lapsed, mismatched, and out-of-period policies route to human review. These records are examples, not a carrier connection.
+Las pólizas desconocidas, vencidas, que no coinciden o fuera del período de cobertura se enrutan a revisión humana. Estos registros son ejemplos, no una conexión con una aseguradora real.
 
-## Architecture
+## Arquitectura
 
-| Component | Responsibility |
+| Componente | Responsabilidad |
 | --- | --- |
-| `agent.py` | ADK graph: normalization, classification, validation, and packet generation |
-| `policies.py`, `schemas.py` | Intake rules, routing, and structured data |
-| `policy_directory.py` | Mock policy records |
-| `live_demo/live_tools.py` | Live configuration, prompts, and tool declarations |
-| `live_demo/server.py` | Sessions, WebSocket transport, tools, and downloads |
-| `live_demo/app.js` | Conversation, camera input, and notebook updates |
-| `live_demo/avatar.js` | Synchronized avatar playback, interruption, and fallback |
-| `live_demo/index.html`, `styles.css` | Responsive interface |
+| `agent.py` | Grafo ADK: normalización, clasificación, validación y generación del paquete |
+| `policies.py`, `schemas.py` | Reglas de admisión, enrutamiento y datos estructurados |
+| `policy_directory.py` | Registros de pólizas simuladas |
+| `live_demo/live_tools.py` | Configuración en vivo, prompts y declaración de herramientas |
+| `live_demo/server.py` | Sesiones, transporte WebSocket, herramientas y descargas |
+| `live_demo/app.js` | Conversación, entrada de cámara y actualizaciones del cuaderno |
+| `live_demo/avatar.js` | Reproducción sincronizada del avatar, interrupción y alternativa de contingencia |
+| `live_demo/index.html`, `styles.css` | Interfaz responsiva |
 
-* `gemini-3.8-live` handles conversation, camera input, and optional avatar output.
-* `gemini-3.8-flash` extracts claim facts and verifies captured photos.
-* `gemini-3.1-flash-image` generates sketches.
-* Background tools: `lookup_policy`, `sync_claim_packet`, `pin_evidence_photo`, and `draw_incident_sketch`.
-* Tools run without blocking conversation. Urgent results can interrupt; other results arrive when idle.
-* The claim graph also runs after finalized claimant turns and caches results by claim revision.
+* `gemini-3.8-live` gestiona la conversación, la entrada de cámara y la salida del avatar opcional.
+* `gemini-3.8-flash` extrae los hechos del reclamo y verifica las fotos capturadas.
+* `gemini-3.1-flash-image` genera los bocetos.
+* Herramientas en segundo plano: `lookup_policy`, `sync_claim_packet`, `pin_evidence_photo` y `draw_incident_sketch`.
+* Las herramientas se ejecutan sin bloquear la conversación. Los resultados urgentes pueden interrumpir; otros resultados llegan cuando el usuario está inactivo.
+* El grafo del reclamo también se ejecuta después de los turnos finalizados del reclamante y almacena en caché los resultados por revisión de reclamo.
 
-## Tests
+## Pruebas
 
-Run from the app directory. JavaScript tests require Node.js.
+Ejecuta desde el directorio de la aplicación. Las pruebas de JavaScript requieren Node.js.
 
 ```bash
 python -m unittest discover -s tests -p 'test_*.py'
@@ -174,4 +174,4 @@ node tests/client-regressions.cjs
 node tests/avatar-player.cjs
 ```
 
-Tests cover claim rules, evidence, sessions, transcripts, interruption, avatar playback, and downloads. Model calls and devices are mocked; verify live microphone and camera behavior separately.
+Las pruebas cubren reglas de reclamos, evidencia, sesiones, transcripciones, interrupciones, reproducción del avatar y descargas. Las llamadas a modelos y dispositivos están simuladas (*mocked*); verifica el comportamiento del micrófono y la cámara en vivo por separado.
