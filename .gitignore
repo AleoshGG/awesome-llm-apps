@@ -19,3 +19,5 @@ dist/
 
 # JetBrains IDEs
 .idea/
+
+.codegraph
