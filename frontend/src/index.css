@@ -95,10 +95,43 @@ body {
   animation: siri-pulse-ring 3.2s ease-in-out infinite;
 }
 
+@keyframes agent-scan {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(420%); }
+}
+
+@keyframes agent-highlight {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  30% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.24); }
+}
+
+@keyframes agent-remove {
+  to { opacity: 0.35; transform: translateX(16px); }
+}
+
+.agent-search-scan::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.16), transparent);
+  animation: agent-scan 1.15s ease-in-out infinite;
+}
+
+.agent-result-highlight { animation: agent-highlight 1.35s ease-out 1; }
+.agent-cart-removing { animation: agent-remove 0.45s ease-in forwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .siri-orb-core,
   .siri-orb-core--active,
   .siri-orb-halo {
+    animation: none;
+  }
+
+  .agent-search-scan::after,
+  .agent-result-highlight,
+  .agent-cart-removing {
     animation: none;
   }
 }

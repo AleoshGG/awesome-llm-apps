@@ -9,6 +9,8 @@ interface CartItemListProps {
   onDecrement: (productId: string) => void
   onRemove: (productId: string) => void
   onContinueShopping: () => void
+  agentProductId?: string | null
+  agentOperation?: 'add' | 'remove' | 'view' | null
 }
 
 export function CartItemList({
@@ -17,6 +19,8 @@ export function CartItemList({
   onDecrement,
   onRemove,
   onContinueShopping,
+  agentProductId = null,
+  agentOperation = null,
 }: CartItemListProps) {
   if (items.length === 0) {
     return (
@@ -57,7 +61,7 @@ export function CartItemList({
         return (
           <Card
             key={item.product.id}
-            className="rounded-2xl border border-blue-100 bg-white p-4 shadow-2xs"
+            className={`rounded-2xl border border-blue-100 bg-white p-4 shadow-2xs ${agentProductId === item.product.id ? (agentOperation === 'remove' ? 'agent-cart-removing' : 'agent-result-highlight') : ''}`}
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3.5">

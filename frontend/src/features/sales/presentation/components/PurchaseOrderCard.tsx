@@ -8,6 +8,7 @@ interface PurchaseOrderCardProps {
   isExpanded: boolean
   onToggleExpand: (saleId: string) => void
   onReorderProduct: (product: ProductDetailEntity, quantity: number) => void
+  isHighlighted?: boolean
 }
 
 export function PurchaseOrderCard({
@@ -15,6 +16,7 @@ export function PurchaseOrderCard({
   isExpanded,
   onToggleExpand,
   onReorderProduct,
+  isHighlighted = false,
 }: PurchaseOrderCardProps) {
   const totalPieces = sale.items.reduce((sum, item) => sum + item.quantity, 0)
   const totalAmountCents = sale.items.reduce(
@@ -23,7 +25,7 @@ export function PurchaseOrderCard({
   )
 
   return (
-    <Card className="rounded-2xl border border-blue-100 bg-white shadow-2xs overflow-hidden">
+    <Card className={`rounded-2xl border border-blue-100 bg-white shadow-2xs overflow-hidden ${isHighlighted ? 'agent-result-highlight' : ''}`}>
       <Card.Header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">

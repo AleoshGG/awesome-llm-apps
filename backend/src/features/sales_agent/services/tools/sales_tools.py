@@ -46,7 +46,7 @@ class ProductArguments(NoArguments):
 
 
 class AddArguments(ProductArguments):
-    quantity: Annotated[int, Field(gt=0)]
+    quantity: Annotated[int, Field(gt=0)] = 1
 
 
 class CheckoutArguments(NoArguments):

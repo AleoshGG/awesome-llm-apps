@@ -58,6 +58,16 @@ class Ready:
 
 
 @dataclass(frozen=True)
+class Paused:
+    pass
+
+
+@dataclass(frozen=True)
+class ResumeError:
+    message: str
+
+
+@dataclass(frozen=True)
 class ToolActivity:
     id: str
     name: str
@@ -66,7 +76,16 @@ class ToolActivity:
     result: dict | None = None
 
 
+@dataclass(frozen=True)
+class UiCommand:
+    id: str
+    action: Literal["catalog_search", "catalog_product", "cart_update", "checkout"]
+    phase: Literal["running", "done", "error", "cancelled"]
+    payload: dict
+
+
 AgentEvent = (
     AudioChunk | TranscriptChunk | ToolCall | ToolCallCancelled | TurnComplete
-    | Interrupted | AgentError | SessionStarted | Ready | ToolActivity
+    | Interrupted | AgentError | SessionStarted | Ready | Paused | ResumeError
+    | ToolActivity | UiCommand
 )

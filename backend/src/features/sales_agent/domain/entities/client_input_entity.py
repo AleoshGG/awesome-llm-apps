@@ -12,8 +12,24 @@ class ClientText:
 
 
 @dataclass(frozen=True)
+class ClientImage:
+    data: bytes
+    mime_type: str
+
+
+@dataclass(frozen=True)
 class ClientClose:
     pass
 
 
-ClientInput = ClientAudio | ClientText | ClientClose
+@dataclass(frozen=True)
+class ClientPause:
+    pass
+
+
+@dataclass(frozen=True)
+class ClientResume:
+    pass
+
+
+ClientInput = ClientAudio | ClientText | ClientImage | ClientPause | ClientResume | ClientClose

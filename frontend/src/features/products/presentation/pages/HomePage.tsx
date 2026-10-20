@@ -8,11 +8,21 @@ import { useCatalogPresentation } from '../hooks/useCatalogPresentation'
 interface HomePageProps {
   getProductQuantityInCart: (productId: string) => number
   onAddToCart: (product: ProductDetailEntity, quantity?: number) => void
+  agentProducts?: ProductDetailEntity[] | null
+  agentSearchPhase?: 'running' | 'done' | 'error' | 'cancelled' | null
+  agentProduct?: ProductDetailEntity | null
+  onDismissAgentProduct?: () => void
+  onClearAgentResults?: () => void
 }
 
 export function HomePage({
   getProductQuantityInCart,
   onAddToCart,
+  agentProducts = null,
+  agentSearchPhase = null,
+  agentProduct = null,
+  onDismissAgentProduct,
+  onClearAgentResults,
 }: HomePageProps) {
   const catalog = useCatalogPresentation()
 
@@ -24,11 +34,18 @@ export function HomePage({
       <CatalogFilterBar
         searchText={catalog.searchText}
         sortBy={catalog.sortBy}
-        resultsCount={catalog.filteredProducts.length}
+        resultsCount={(agentProducts ?? catalog.filteredProducts).length}
         hasActiveFilters={hasActiveFilters}
-        onSearchChange={catalog.setSearchText}
+        onSearchChange={(value) => {
+          onClearAgentResults?.()
+          catalog.setSearchText(value)
+        }}
         onSortChange={catalog.setSortBy}
-        onResetFilters={catalog.resetFilters}
+        onResetFilters={() => {
+          onClearAgentResults?.()
+          catalog.resetFilters()
+        }}
+        isAgentSearching={agentSearchPhase === 'running'}
       />
 
       {catalog.error && (
@@ -47,10 +64,10 @@ export function HomePage({
             Cargando catálogo de productos...
           </p>
         </div>
-      ) : catalog.filteredProducts.length === 0 ? (
+      ) : (agentProducts ?? catalog.filteredProducts).length === 0 ? (
         <div className="rounded-2xl border border-blue-100 bg-white p-10 text-center space-y-3">
           <h3 className="font-display text-lg font-bold text-slate-900">
-            No encontramos productos con esa búsqueda
+            No encontramos coincidencias
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             Intenta con otro término o restablece el buscador para ver todos los
@@ -60,7 +77,10 @@ export function HomePage({
             <Button
               size="sm"
               variant="secondary"
-              onPress={catalog.resetFilters}
+              onPress={() => {
+                onClearAgentResults?.()
+                catalog.resetFilters()
+              }}
             >
               Ver todos los productos
             </Button>
@@ -68,26 +88,27 @@ export function HomePage({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {catalog.filteredProducts.map((product) => (
+          {(agentProducts ?? catalog.filteredProducts).map((product) => (
             <ProductCard
               key={product.id}
               product={product}
               quantityInCart={getProductQuantityInCart(product.id)}
               onAddToCart={(item) => onAddToCart(item, 1)}
               onOpenDetail={catalog.openProductDetail}
+              isHighlighted={agentSearchPhase === 'done' && agentProducts !== null}
             />
           ))}
         </div>
       )}
 
       <ProductDetailModal
-        product={catalog.activeProduct}
+        product={agentProduct ?? catalog.activeProduct}
         quantityInCart={
-          catalog.activeProduct
-            ? getProductQuantityInCart(catalog.activeProduct.id)
+          (agentProduct ?? catalog.activeProduct)
+            ? getProductQuantityInCart((agentProduct ?? catalog.activeProduct)!.id)
             : 0
         }
-        onClose={catalog.closeProductDetail}
+        onClose={agentProduct ? (onDismissAgentProduct ?? catalog.closeProductDetail) : catalog.closeProductDetail}
         onAddToCart={onAddToCart}
       />
     </div>

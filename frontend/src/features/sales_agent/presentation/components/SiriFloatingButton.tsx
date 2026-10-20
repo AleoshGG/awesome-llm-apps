@@ -13,6 +13,7 @@ const PHASE_LABELS: Record<AgentConnectionPhase, string> = {
   ready: '¿Necesitas ayuda?',
   listening: 'Escuchando...',
   speaking: 'Respondiendo...',
+  paused: 'Sesión en pausa',
   error: 'Sin conexión',
 }
 

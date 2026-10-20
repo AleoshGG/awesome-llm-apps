@@ -7,6 +7,7 @@ interface ProductCardProps {
   quantityInCart: number
   onAddToCart: (product: ProductDetailEntity) => void
   onOpenDetail: (product: ProductDetailEntity) => void
+  isHighlighted?: boolean
 }
 
 export function ProductCard({
@@ -14,12 +15,13 @@ export function ProductCard({
   quantityInCart,
   onAddToCart,
   onOpenDetail,
+  isHighlighted = false,
 }: ProductCardProps) {
   const mainImage =
     product.media.find((item) => item.isMain)?.url ?? product.media[0]?.url
 
   return (
-    <Card className="group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-blue-100/90 bg-white shadow-2xs transition-colors hover:border-blue-300">
+    <Card className={`group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-blue-100/90 bg-white shadow-2xs transition-colors hover:border-blue-300 ${isHighlighted ? 'agent-result-highlight' : ''}`}>
       <div>
         <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100">
           {mainImage ? (

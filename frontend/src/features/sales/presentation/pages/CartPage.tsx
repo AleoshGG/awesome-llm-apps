@@ -27,6 +27,9 @@ interface CartPageProps {
   onRefreshCart: () => void
   onNavigateToStore: () => void
   onNavigateToPurchases: () => void
+  agentOperation?: 'add' | 'remove' | 'view' | null
+  agentProductId?: string | null
+  agentStatus?: string | null
 }
 
 export function CartPage({
@@ -49,6 +52,9 @@ export function CartPage({
   onRefreshCart,
   onNavigateToStore,
   onNavigateToPurchases,
+  agentOperation = null,
+  agentProductId = null,
+  agentStatus = null,
 }: CartPageProps) {
   if (checkoutStep === 'completed' && lastCompletedSale) {
     return (
@@ -103,6 +109,12 @@ export function CartPage({
         </div>
       )}
 
+      {agentStatus && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-xs text-blue-950" role="status">
+          {agentStatus}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-100 bg-white py-16 text-center">
           <Spinner size="md" />
@@ -119,6 +131,8 @@ export function CartPage({
               onDecrement={onDecrementItem}
               onRemove={onRemoveItem}
               onContinueShopping={onNavigateToStore}
+              agentOperation={agentOperation}
+              agentProductId={agentProductId}
             />
           </div>
 

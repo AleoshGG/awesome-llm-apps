@@ -21,4 +21,4 @@ EXPOSE 8000
 # Entrypoint applies alembic migrations and runs mock_catalog.sql before starting server
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--ws-max-size", "800000"]
+CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--ws-max-size", "6291456"]

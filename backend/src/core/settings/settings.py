@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     DB_PORT: int
     GOOGLE_API_KEY: SecretStr | None = None
     SALES_AGENT_GEMINI_MODEL: str = "gemini-3.8-live"
+    SALES_AGENT_VISUAL_MODEL: str = "gemini-3.8-flash"
     SALES_AGENT_VOICE: str = "Kore"
 
     model_config = SettingsConfigDict(

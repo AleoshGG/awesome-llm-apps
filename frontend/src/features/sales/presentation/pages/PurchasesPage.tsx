@@ -17,6 +17,7 @@ interface PurchasesPageProps {
   onReorderProduct: (product: ProductDetailEntity, quantity: number) => void
   onRefreshSales: () => void
   onNavigateToStore: () => void
+  highlightedSaleId?: string | null
 }
 
 export function PurchasesPage({
@@ -32,6 +33,7 @@ export function PurchasesPage({
   onReorderProduct,
   onRefreshSales,
   onNavigateToStore,
+  highlightedSaleId = null,
 }: PurchasesPageProps) {
   return (
     <div className="space-y-6">
@@ -123,6 +125,7 @@ export function PurchasesPage({
               isExpanded={expandedSaleId === sale.id}
               onToggleExpand={onToggleExpandSale}
               onReorderProduct={onReorderProduct}
+              isHighlighted={highlightedSaleId === sale.id}
             />
           ))}
         </div>

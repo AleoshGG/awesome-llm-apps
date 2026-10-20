@@ -25,6 +25,24 @@ class GeminiRealtimeVoiceSession:
             )
 
     async def send_text(self, text: str) -> None:
+        await self._send_text(text)
+
+    async def send_context(self, text: str) -> None:
+        await self._send_text(text)
+
+    async def restore_context(self, turns: list[tuple[str, str]]) -> None:
+        if not turns:
+            return
+        async with self._send_lock:
+            await self._session.send_client_content(
+                turns=[
+                    types.Content(role=role, parts=[types.Part(text=text)])
+                    for role, text in turns
+                ],
+                turn_complete=False,
+            )
+
+    async def _send_text(self, text: str) -> None:
         async with self._send_lock:
             await self._session.send_client_content(
                 turns=types.Content(role="user", parts=[types.Part(text=text)]),

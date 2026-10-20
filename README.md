@@ -57,6 +57,7 @@ Configura las variables `DB_*` habituales y agrega a `.env` en la raíz:
 ```dotenv
 GOOGLE_API_KEY=tu-clave
 SALES_AGENT_GEMINI_MODEL=gemini-3.8-live
+SALES_AGENT_VISUAL_MODEL=gemini-3.8-flash
 SALES_AGENT_VOICE=Kore
 ```
 
@@ -65,7 +66,7 @@ Desde `backend/`, instala las dependencias, aplica las migraciones y arranca:
 ```bash
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn src.app:app --host 127.0.0.1 --port 8000 --workers 1 --ws-max-size 800000
+uvicorn src.app:app --host 127.0.0.1 --port 8000 --workers 1 --ws-max-size 6291456
 ```
 
 Conecta un cliente a `ws://127.0.0.1:8000/ws/sales-agent`. La clave permanece en el
@@ -74,24 +75,46 @@ backend. El agente comienza en español y acepta estos mensajes JSON:
 ```json
 {"type":"text","text":"Busca productos de panadería"}
 {"type":"audio","data":"<PCM16 mono little-endian a 16000 Hz, en base64>"}
+{"type":"image","mime_type":"image/jpeg","data":"<imagen en base64>"}
+{"type":"pause"}
+{"type":"resume"}
 {"type":"close"}
 ```
 
 El audio es PCM crudo, sin cabecera WAV. Envía fragmentos cortos continuamente;
 Gemini detecta los turnos de voz. El texto inicia una respuesta y puede interrumpir
-la generación en curso. El límite es de 800000 bytes por mensaje y 8000 caracteres
-por texto. El cliente debe esperar `ready` antes de enviar contenido.
+la generación en curso. El audio conserva su límite de 800000 caracteres base64
+y el texto admite 8000 caracteres. Las imágenes pueden ser JPEG, PNG o WebP, deben
+coincidir con `mime_type` y pueden pesar hasta 4 MiB una vez decodificadas. El marco
+WebSocket admite hasta 6 MiB. El cliente debe esperar `ready` antes de enviar contenido.
 
 | Evento del servidor | Contenido y uso |
 |---|---|
 | `session` | `provider`, `model`, `tools`, `input_sample_rate: 16000`, `output_sample_rate: 24000` |
 | `ready` | Conexión con Gemini establecida |
+| `paused` | Gemini se desconectó; el WebSocket sigue disponible para `resume` o `close` |
+| `resume_error` | La reanudación falló de forma recuperable; puede enviarse otro `resume` |
 | `audio` | `data` en base64 y `mime_type`; reproducir PCM16 mono a 24 kHz |
 | `transcript` | `speaker: user\|agent`, `id`, `text`, `final`; reemplazar el texto del mismo `id`, no concatenarlo |
 | `tool` | `id`, `name`, `args`, `phase: running\|done\|error\|cancelled`, `result` |
+| `ui` | `id`, `action`, `phase` y `payload` semántico derivado del resultado real |
 | `interrupted` | Detener reproducción y descartar audio pendiente |
 | `turn_complete` | El modelo terminó el turno |
 | `error` | `message` legible; la sesión se cerrará |
+
+Al recibir una imagen, el servidor emite eventos `tool` con
+`name: "visual_product_search"`: primero `running` y después `done`, `error` o
+`cancelled`. `done.result` contiene `summary`, `observed_features`,
+`matched_categories`, `searches` y hasta diez `products` reales del catálogo.
+Estos eventos nunca contienen el base64. Un `tool/error` visual es recuperable y
+no cierra la sesión. Solo se procesa una imagen a la vez; una segunda imagen recibe
+`tool/error` y puede reintentarse cuando termine la primera.
+
+Los eventos `ui` controlan la presentación sin ejecutar mutaciones en el navegador:
+`catalog_search`, `catalog_product`, `cart_update` y `checkout`. Sus fases son
+`running`, `done`, `error` y `cancelled`. Búsqueda, detalle, carrito y compra siempre
+se construyen con los resultados de las tools del backend; categorías y proveedores
+no provocan navegación. `add_to_cart.quantity` vale `1` cuando se omite.
 
 Herramientas: `search_products`, `get_product_details`, `list_categories`,
 `list_providers`, `add_to_cart`, `remove_from_cart`, `get_cart`, `checkout`.
@@ -107,8 +130,13 @@ los precios no son históricos. No hay reintentos automáticos de operaciones ni
 reconexión automática. Los identificadores repetidos de herramientas se ignoran
 dentro de la misma conexión; no hay deduplicación entre conexiones distintas.
 
-Las sesiones duran hasta 20 minutos o hasta que Gemini o el cliente cierren la
-conexión. Se cancelan las tareas pendientes al cerrar. Si se pierde la conexión
+Las sesiones lógicas duran hasta 20 minutos, incluido el tiempo en pausa. `pause`
+detiene Gemini y los medios, pero conserva el WebSocket, hasta 24 transcripciones
+finales y el último resultado relevante dentro de un límite serializado de 32 KiB.
+La restauración usa turnos incompletos y no genera una respuesta espontánea. Audio,
+imágenes y base64 nunca se conservan. Las mutaciones ya iniciadas terminan antes de
+confirmar la pausa; el análisis visual pendiente se cancela. Se cancelan las tareas
+pendientes al cerrar. Si se pierde la conexión
 durante una escritura, comprueba el estado antes de repetirla: la cancelación no
 revierte una transacción ya confirmada. Los clientes web deben usar el mismo origen
 que el backend (o un proxy del mismo origen). Este endpoint no agrega autenticación
@@ -119,3 +147,24 @@ Pruebas desde `backend/`, con Gemini simulado y sin llamadas de pago:
 ```bash
 python -m unittest discover -s tests -p 'test_sales*.py' -v
 ```
+
+El frontend Vite usa el mismo host (`ws://` o `wss://`) y el proxy de desarrollo ya
+redirige `/ws`. Desde `frontend/`:
+
+```bash
+npm install
+npm run dev
+npm run lint
+npm test
+npm run build
+```
+
+El cliente captura micrófono como PCM16 mono a 16 kHz, reproduce la respuesta PCM16
+a 24 kHz, vacía la cola con `interrupted` y solo envía imágenes por captura explícita
+o selector JPEG/PNG/WebP (máximo 4 MiB). Minimizar pausa la sesión; “Terminar sesión”
+la cierra y limpia el historial local.
+
+> Bloqueo de pruebas conocido: con la combinación instalada de FastAPI/Starlette,
+> `tests/test_sales_agent_websocket.py` se queda esperando dentro de `TestClient` y
+> emite la advertencia de migración de `httpx`. Las pruebas unitarias del mismo ciclo
+> WebSocket y del orquestador sí se ejecutan; no se realizan llamadas reales a Gemini.

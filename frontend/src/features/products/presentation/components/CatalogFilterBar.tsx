@@ -9,6 +9,7 @@ interface CatalogFilterBarProps {
   onSearchChange: (value: string) => void
   onSortChange: (sort: SortOption) => void
   onResetFilters: () => void
+  isAgentSearching?: boolean
 }
 
 export function CatalogFilterBar({
@@ -19,11 +20,12 @@ export function CatalogFilterBar({
   onSearchChange,
   onSortChange,
   onResetFilters,
+  isAgentSearching = false,
 }: CatalogFilterBarProps) {
   return (
     <section
       aria-label="Buscador de productos"
-      className="rounded-2xl border border-blue-100 bg-white p-4 shadow-2xs"
+      className={`relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-4 shadow-2xs ${isAgentSearching ? 'agent-search-scan' : ''}`}
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="w-full md:max-w-lg">

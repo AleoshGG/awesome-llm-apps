@@ -8,6 +8,7 @@ export type AgentConnectionPhase =
   | 'ready'
   | 'listening'
   | 'speaking'
+  | 'paused'
   | 'error'
 
 export type AgentToolPhase = 'running' | 'done' | 'error' | 'cancelled'

@@ -18,6 +18,7 @@ from src.features.sales.domain.usecases.get_cart_usecase import GetCartUseCase
 from src.features.sales.domain.usecases.register_sale_usecase import RegisterSaleUseCase
 from src.features.sales.domain.usecases.remove_product_from_cart_usecase import RemoveProductFromCartUseCase
 from src.features.sales_agent.data.services.gemini_realtime_voice_service_adapter import GeminiRealtimeVoiceServiceAdapter
+from src.features.sales_agent.data.services.adk_visual_product_search_service import AdkVisualProductSearchService
 from src.features.sales_agent.domain.entities.realtime_session_config_entity import RealtimeSessionConfig
 from src.features.sales_agent.domain.prompts.sales_agent_prompt import SYSTEM_INSTRUCTION
 from src.features.sales_agent.domain.tools.tool_registry import ToolRegistry
@@ -67,8 +68,9 @@ def build_tool_registry() -> ToolRegistry:
 
 def get_sales_agent(websocket: WebSocket) -> SalesAgentRunSessionUseCase:
     key = settings.GOOGLE_API_KEY
+    api_key = key.get_secret_value() if key else None
     return SalesAgentRunSessionUseCase(
-        GeminiRealtimeVoiceServiceAdapter(key.get_secret_value() if key else None),
+        GeminiRealtimeVoiceServiceAdapter(api_key),
         build_tool_registry(),
         RealtimeSessionConfig(
             model=settings.SALES_AGENT_GEMINI_MODEL,
@@ -77,4 +79,14 @@ def get_sales_agent(websocket: WebSocket) -> SalesAgentRunSessionUseCase:
             tools=[],
         ),
         websocket.app.state.sales_agent_cart_lock,
+        visual_search=AdkVisualProductSearchService(
+            api_key,
+            settings.SALES_AGENT_VISUAL_MODEL,
+            usecase_provider(
+                lambda session: CategoryFindAllUseCase(CategoryRepositoryAdapter(session))
+            ),
+            usecase_provider(
+                lambda session: ProductFindByQueryUseCase(ProductRepositoryAdapter(session))
+            ),
+        ),
     )

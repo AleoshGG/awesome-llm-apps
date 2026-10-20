@@ -2,6 +2,8 @@ import base64
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -11,6 +13,7 @@ from fastapi.testclient import TestClient
 from src.app import app
 from src.features.sales_agent.data.services.gemini_realtime_voice_service_adapter import GeminiRealtimeVoiceServiceAdapter
 from src.features.sales_agent.domain.entities.agent_event_entity import AudioChunk, TranscriptChunk, TurnComplete
+from src.features.sales_agent.domain.entities.visual_search_result_entity import VisualSearchResult
 from src.features.sales_agent.domain.tools.tool_registry import ToolRegistry
 from src.features.sales_agent.domain.usecases.sales_agent_run_session_usecase import SalesAgentRunSessionUseCase
 from src.features.sales_agent.presentation.sales_agent_dependencies import get_sales_agent
@@ -32,8 +35,13 @@ class SalesAgentWebSocketTests(unittest.TestCase):
 
             session.send_text.side_effect = respond
             self.sessions.append(session)
+            visual = SimpleNamespace(analyze=AsyncMock(return_value=VisualSearchResult(
+                "Parece pan", ["bolsa"], ["Panadería"],
+                [{"name": "pan"}], [{"id": "p1", "name": "Pan"}],
+            )))
             return SalesAgentRunSessionUseCase(
-                session, ToolRegistry([]), config(), websocket.app.state.sales_agent_cart_lock
+                session, ToolRegistry([]), config(), websocket.app.state.sales_agent_cart_lock,
+                visual_search=visual,
             )
 
         app.dependency_overrides[get_sales_agent] = dependency
@@ -82,6 +90,34 @@ class SalesAgentWebSocketTests(unittest.TestCase):
                         ws.receive_json()
                     self.assertEqual(closed.exception.code, 1008)
                 self.assertTrue(self.sessions[-1].closed)
+
+    def test_image_contract_runs_visual_search_without_provider_call(self):
+        jpeg = base64.b64encode(b"\xff\xd8\xff\xe0payload").decode()
+        with self.client.websocket_connect("/ws/sales-agent") as ws:
+            self.ready(ws)
+            ws.send_json({"type": "image", "mime_type": "image/jpeg", "data": jpeg})
+            running = ws.receive_json()
+            ui_running = ws.receive_json()
+            done = ws.receive_json()
+            ui_done = ws.receive_json()
+            self.assertEqual((running["name"], running["phase"]),
+                             ("visual_product_search", "running"))
+            self.assertEqual(done["phase"], "done")
+            self.assertEqual(done["result"]["products"][0]["id"], "p1")
+            self.assertEqual((ui_running["type"], ui_done["action"]), ("ui", "catalog_search"))
+            self.assertNotIn("data", running["args"])
+            ws.send_json({"type": "close"})
+
+    def test_pause_resume_keeps_websocket_open(self):
+        with self.client.websocket_connect("/ws/sales-agent") as ws:
+            self.ready(ws)
+            ws.send_json({"type": "text", "text": "pan"})
+            self.assertEqual(ws.receive_json()["type"], "transcript")
+            ws.send_json({"type": "pause"})
+            self.assertEqual(ws.receive_json(), {"type": "paused"})
+            ws.send_json({"type": "resume"})
+            self.assertEqual(ws.receive_json(), {"type": "ready"})
+            ws.send_json({"type": "close"})
 
     def test_disconnect_closes_provider(self):
         with self.client.websocket_connect("/ws/sales-agent") as ws:

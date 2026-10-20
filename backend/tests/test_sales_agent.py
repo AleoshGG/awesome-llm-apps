@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 import unittest
 from contextlib import asynccontextmanager
@@ -20,17 +21,21 @@ from src.features.sales_agent.data.services.gemini_realtime_voice_service_adapte
     GeminiRealtimeVoiceServiceAdapter, GeminiRealtimeVoiceSession,
 )
 from src.features.sales_agent.domain.entities.agent_event_entity import (
-    AudioChunk, Interrupted, Ready, ToolActivity, ToolCall, ToolCallCancelled,
+    AudioChunk, Interrupted, Paused, Ready, ToolActivity, ToolCall, ToolCallCancelled,
     TranscriptChunk, TurnComplete,
 )
-from src.features.sales_agent.domain.entities.client_input_entity import ClientAudio, ClientClose, ClientText
+from src.features.sales_agent.domain.entities.client_input_entity import (
+    ClientAudio, ClientClose, ClientPause, ClientResume, ClientText,
+)
 from src.features.sales_agent.domain.entities.realtime_session_config_entity import RealtimeSessionConfig
 from src.features.sales_agent.domain.entities.tool_definition_entity import ToolDefinition
 from src.features.sales_agent.domain.entities.tool_result_entity import ToolResult
 from src.features.sales_agent.domain.exceptions import InvalidToolArgumentsError, ProviderConnectionError
 from src.features.sales_agent.domain.tools.agent_tool import AgentTool
 from src.features.sales_agent.domain.tools.tool_registry import ToolRegistry
-from src.features.sales_agent.domain.usecases.sales_agent_run_session_usecase import SalesAgentRunSessionUseCase
+from src.features.sales_agent.domain.usecases.sales_agent_run_session_usecase import (
+    MAX_CONTEXT_BYTES, SalesAgentRunSessionUseCase, SessionMemory, _tool_ui,
+)
 from src.features.sales_agent.presentation.sales_agent_dependencies import build_tool_registry, usecase_provider
 from src.features.sales_agent.services.tools.sales_tools import (
     AddToCartTool, CheckoutTool, GetProductDetailsTool, SearchProductsTool,
@@ -86,6 +91,23 @@ class EventMapperTests(unittest.TestCase):
         checkout = next(d for d in declarations if d.name == "checkout")
         self.assertEqual(checkout.parameters_json_schema["required"], ["confirmed"])
         self.assertEqual(checkout.behavior, types.Behavior.NON_BLOCKING)
+
+    def test_session_memory_is_bounded_and_never_retains_media(self):
+        memory = SessionMemory()
+        for index in range(30):
+            memory.transcript("user", f"mensaje {index}")
+        memory.result("visual_search", {"data": "base64", "audio": b"bytes", "products": []})
+        turns = memory.turns()
+        serialized = json.dumps(turns, ensure_ascii=False, separators=(",", ":")).encode()
+        self.assertLessEqual(len(serialized), MAX_CONTEXT_BYTES)
+        self.assertEqual(sum(role == "user" and text.startswith("mensaje") for role, text in turns), 24)
+        self.assertNotIn(b"base64", serialized)
+
+    def test_semantic_ui_is_derived_from_real_tool_result(self):
+        event = _tool_ui(ToolCall("s", "search_products", {"name": "pan"}), "done",
+                         {"products": [{"id": "p1"}]})
+        self.assertEqual((event.action, event.payload["products"][0]["id"]),
+                         ("catalog_search", "p1"))
 
 
 class GeminiAdapterTests(unittest.IsolatedAsyncioTestCase):
@@ -188,6 +210,11 @@ class ToolTests(unittest.IsolatedAsyncioTestCase):
         self.usecase.execute.assert_awaited_with()
         self.assertEqual(result["sale"]["created_at"], "2026-01-01T00:00:00+00:00")
 
+    async def test_add_quantity_defaults_to_one(self):
+        self.usecase.execute.return_value = []
+        await AddToCartTool(self.provider).execute({"product_id": "p1"})
+        self.usecase.execute.assert_awaited_once_with(product_id="p1", quantity=1)
+
     async def test_unknown_product_and_empty_cart_propagate(self):
         self.usecase.execute.return_value = None
         with self.assertRaises(ProductNotFoundError):
@@ -235,6 +262,8 @@ class FakeSession:
         self.results = asyncio.Queue()
         self.send_audio = AsyncMock()
         self.send_text = AsyncMock()
+        self.send_context = AsyncMock()
+        self.restore_context = AsyncMock()
         self.closed = False
 
     async def send_tool_result(self, result):
@@ -270,11 +299,12 @@ class FakeTool(AgentTool):
 
 
 class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
-    async def start(self, tools=(), timeout=2):
+    async def start(self, tools=(), timeout=2, visual_search=None):
         self.channel = FakeChannel()
         self.session = FakeSession()
         usecase = SalesAgentRunSessionUseCase(
-            self.session, ToolRegistry(list(tools)), config(), asyncio.Lock(), timeout
+            self.session, ToolRegistry(list(tools)), config(), asyncio.Lock(), timeout,
+            visual_search,
         )
         self.task = asyncio.create_task(usecase.execute(self.channel))
         await self.channel.events.get()  # session
@@ -296,6 +326,45 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.session.send_audio.assert_awaited_once_with(b"\0\0")
         self.session.send_text.assert_awaited_once_with("pan")
         self.assertTrue(self.session.closed)
+
+    async def test_pause_resume_keeps_channel_and_restores_context_without_turn(self):
+        await self.start()
+        await self.channel.inputs.put(ClientText("pan"))
+        await self.channel.events.get()
+        await self.channel.inputs.put(ClientPause())
+        self.assertIsInstance(await self.channel.events.get(), Paused)
+        self.assertTrue(self.session.closed)
+        await self.channel.inputs.put(ClientResume())
+        self.assertIsInstance(await self.channel.events.get(), Ready)
+        turns = self.session.restore_context.call_args.args[0]
+        self.assertIn(("user", "pan"), turns)
+        self.session.send_text.assert_awaited_once_with("pan")
+        await self.channel.inputs.put(ClientClose())
+        await self.task
+
+    async def test_pause_waits_for_started_cart_mutation_exactly_once(self):
+        started = asyncio.Event()
+        release = asyncio.Event()
+        execute = AsyncMock()
+
+        async def mutate(args):
+            started.set()
+            await release.wait()
+            return {"cart": []}
+
+        execute.side_effect = mutate
+        await self.start([FakeTool("add_to_cart", execute, uses_cart=True)])
+        await self.session.incoming.put(ToolCall("m1", "add_to_cart", {"product_id": "p1"}))
+        await started.wait()
+        await self.channel.inputs.put(ClientPause())
+        await asyncio.sleep(0)
+        self.assertFalse(self.task.done())
+        release.set()
+        while not isinstance(event := await self.channel.events.get(), Paused):
+            pass
+        execute.assert_awaited_once()
+        await self.channel.inputs.put(ClientClose())
+        await self.task
 
     async def test_tools_report_errors_and_duplicate_ids_execute_once(self):
         execute = AsyncMock(return_value={"ok": True})
