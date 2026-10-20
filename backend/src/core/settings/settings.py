@@ -1,4 +1,5 @@
 from pathlib import Path
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
@@ -10,6 +11,9 @@ class Settings(BaseSettings):
     DB_NAME: str
     DB_HOST: str
     DB_PORT: int
+    GOOGLE_API_KEY: SecretStr | None = None
+    SALES_AGENT_GEMINI_MODEL: str = "gemini-3.8-live"
+    SALES_AGENT_VOICE: str = "Kore"
 
     model_config = SettingsConfigDict(
         env_file=str(ROOT_DIR / ".env"),
