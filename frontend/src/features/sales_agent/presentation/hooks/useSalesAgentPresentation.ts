@@ -41,14 +41,18 @@ export function useSalesAgentPresentation(): UseSalesAgentPresentationReturn {
   const camera = useRef<MediaStream | null>(null)
   const connected = useRef(false)
 
-  const stopMedia = useCallback(() => {
-    microphone.current.stop()
-    player.current.stop()
+  const closeCamera = useCallback(() => {
     camera.current?.getTracks().forEach((track) => track.stop())
     camera.current = null
     setCameraStream(null)
-    setIsMicActive(false)
   }, [])
+
+  const stopMedia = useCallback(() => {
+    microphone.current.stop()
+    player.current.stop()
+    closeCamera()
+    setIsMicActive(false)
+  }, [closeCamera])
 
   useEffect(() => repository.current.subscribe((event) => {
     if (event.type === 'audio') void player.current.enqueue(event.data)
@@ -129,9 +133,7 @@ export function useSalesAgentPresentation(): UseSalesAgentPresentationReturn {
 
   const toggleCamera = () => {
     if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop())
-      camera.current = null
-      setCameraStream(null)
+      closeCamera()
       return
     }
     void navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }).then((stream) => {
@@ -141,13 +143,17 @@ export function useSalesAgentPresentation(): UseSalesAgentPresentationReturn {
       .catch(() => dispatch({ type: 'error', message: 'Activa el permiso de cámara para tomar una foto.' }))
   }
 
-  const sendImage = (blob: Blob) => {
-    if (state.visualSearchActive) return
-    try { validateImage(blob) } catch (error) {
+  const sendImage = async (blob: Blob): Promise<boolean> => {
+    if (state.visualSearchActive) return false
+    try {
+      validateImage(blob)
+      const base64 = await imageToBase64(blob)
+      repository.current.sendImage(blob.type as ImageType, base64)
+      return true
+    } catch (error) {
       dispatch({ type: 'error', message: error instanceof Error ? error.message : 'Imagen inválida.' })
-      return
+      return false
     }
-    void imageToBase64(blob).then((base64) => repository.current.sendImage(blob.type as ImageType, base64))
   }
 
   const captureCamera = (video: HTMLVideoElement) => {
@@ -155,7 +161,9 @@ export function useSalesAgentPresentation(): UseSalesAgentPresentationReturn {
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     canvas.getContext('2d')?.drawImage(video, 0, 0)
-    canvas.toBlob((blob) => { if (blob) sendImage(blob) }, 'image/jpeg', 0.88)
+    canvas.toBlob((blob) => {
+      if (blob) void sendImage(blob).then((sent) => { if (sent) closeCamera() })
+    }, 'image/jpeg', 0.88)
   }
 
   const sendUserMessage = (customText?: string) => {
@@ -169,7 +177,8 @@ export function useSalesAgentPresentation(): UseSalesAgentPresentationReturn {
     isOpen, phase: state.phase, isMicActive, isCameraActive: cameraStream !== null,
     cameraStream, visualSearchActive: state.visualSearchActive, statusMessage: state.statusMessage,
     draftText, messages: state.messages, uiCommand: state.uiCommand, toggleWidget, closeWidget,
-    endSession, toggleMic, toggleCamera, captureCamera, selectImage: sendImage,
+    endSession, toggleMic, toggleCamera, captureCamera,
+    selectImage: (file) => { void sendImage(file) },
     retryConnection: connect, setDraftText, sendUserMessage,
   }
 }
