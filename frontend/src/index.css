@@ -1,1 +1,104 @@
+/* Tailwind CSS v4 + HeroUI v3 layered styles */
 @import "@heroui/styles";
+
+:root {
+  --canvas-bg: #f5f8fc;
+  --surface-card: #ffffff;
+  --surface-subtle: #edf2f9;
+  --border-hairline: #dbe4f0;
+  --ink-primary: #0f172a;
+  --ink-secondary: #334155;
+  --ink-muted: #64748b;
+  --retail-accent: #2563eb;
+  --retail-accent-dark: #1d4ed8;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--canvas-bg);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.tabular-price {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Siri-like blue iridescent orb animations (pure blue/sky/indigo spectrum) */
+@keyframes siri-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes siri-pulse-ring {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.9;
+  }
+}
+
+.siri-orb-core {
+  background: conic-gradient(
+    from 0deg,
+    #38bdf8,
+    #2563eb,
+    #1d4ed8,
+    #4f46e5,
+    #0284c7,
+    #38bdf8
+  );
+  animation: siri-spin 6s linear infinite;
+}
+
+.siri-orb-core--active {
+  animation: siri-spin 2.4s linear infinite;
+}
+
+.siri-orb-glow {
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(56, 189, 248, 0.5) 45%,
+    rgba(37, 99, 235, 0.4) 75%,
+    transparent 100%
+  );
+}
+
+.siri-orb-halo {
+  background: conic-gradient(
+    from 90deg,
+    rgba(56, 189, 248, 0.6),
+    rgba(37, 99, 235, 0.6),
+    rgba(79, 70, 229, 0.55),
+    rgba(2, 132, 199, 0.6),
+    rgba(56, 189, 248, 0.6)
+  );
+  filter: blur(10px);
+  animation: siri-pulse-ring 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siri-orb-core,
+  .siri-orb-core--active,
+  .siri-orb-halo {
+    animation: none;
+  }
+}

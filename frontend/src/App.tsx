@@ -1,124 +1,106 @@
-import { Button, Card, Chip, Separator } from '@heroui/react'
-import { useEffect, useState } from 'react'
-
-type ServiceStatus = 'checking' | 'online' | 'offline'
-
-const STATUS_CONFIG: Record<
-  ServiceStatus,
-  { label: string; color: 'warning' | 'success' | 'danger' }
-> = {
-  checking: { label: 'Verificando...', color: 'warning' },
-  online: { label: 'Operativo', color: 'success' },
-  offline: { label: 'Sin conexión', color: 'danger' },
-}
-
-async function pingGraphQL(): Promise<boolean> {
-  try {
-    const response = await fetch('/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: '{ __typename }' }),
-    })
-    return response.ok
-  } catch {
-    return false
-  }
-}
+import { useState } from 'react'
+import { AppShell, type AppView } from './core/layout/AppShell'
+import { HomePage } from './features/products/presentation/pages/HomePage'
+import { useCartPresentation } from './features/sales/presentation/hooks/useCartPresentation'
+import { usePurchasesPresentation } from './features/sales/presentation/hooks/usePurchasesPresentation'
+import { CartPage } from './features/sales/presentation/pages/CartPage'
+import { PurchasesPage } from './features/sales/presentation/pages/PurchasesPage'
+import { SiriChatWidget } from './features/sales_agent/presentation/components/SiriChatWidget'
+import { SiriFloatingButton } from './features/sales_agent/presentation/components/SiriFloatingButton'
+import { useSalesAgentPresentation } from './features/sales_agent/presentation/hooks/useSalesAgentPresentation'
 
 export function App() {
-  const [backendStatus, setBackendStatus] = useState<ServiceStatus>('checking')
-  const [lastChecked, setLastChecked] = useState<string>('-')
-  const [refreshCount, setRefreshCount] = useState(0)
+  const [activeView, setActiveView] = useState<AppView>('home')
 
-  useEffect(() => {
-    let active = true
-
-    void pingGraphQL().then((isOnline) => {
-      if (!active) return
-      setBackendStatus(isOnline ? 'online' : 'offline')
-      setLastChecked(new Date().toLocaleTimeString('es-MX'))
-    })
-
-    return () => {
-      active = false
-    }
-  }, [refreshCount])
-
-  const handleRefresh = () => {
-    setBackendStatus('checking')
-    setRefreshCount((prev) => prev + 1)
-  }
-
-  const statusInfo = STATUS_CONFIG[backendStatus]
+  const cart = useCartPresentation()
+  const purchases = usePurchasesPresentation()
+  const salesAgent = useSalesAgentPresentation()
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4">
-        <Card className="w-full">
-          <Card.Header className="flex flex-col items-start gap-1">
-            <div className="flex w-full items-center justify-between gap-2">
-              <Card.Title className="text-lg font-semibold">
-                Live AI Sales Assistant
-              </Card.Title>
-              <Chip color="success" size="sm" variant="soft">
-                <Chip.Label>Frontend Activo</Chip.Label>
-              </Chip>
-            </div>
-            <Card.Description>
-              Estado general de la aplicación demo (React + Vite + HeroUI)
-            </Card.Description>
-          </Card.Header>
+    <>
+      <AppShell
+        activeView={activeView}
+        cartItemsCount={cart.totalItemsCount}
+        purchasesCount={purchases.totalOrdersCount}
+        onNavigate={setActiveView}
+      >
+        {activeView === 'home' && (
+          <HomePage
+            getProductQuantityInCart={cart.getProductQuantity}
+            onAddToCart={cart.addItem}
+          />
+        )}
 
-          <Separator />
+        {activeView === 'cart' && (
+          <CartPage
+            items={cart.items}
+            isLoading={cart.isLoading}
+            isSubmitting={cart.isSubmitting}
+            error={cart.error}
+            totalItemsCount={cart.totalItemsCount}
+            subtotalCents={cart.subtotalCents}
+            shippingCents={cart.shippingCents}
+            totalCents={cart.totalCents}
+            checkoutStep={cart.checkoutStep}
+            lastCompletedSale={cart.lastCompletedSale}
+            onIncrementItem={(product) => cart.addItem(product, 1)}
+            onDecrementItem={cart.decrementItem}
+            onRemoveItem={cart.removeItem}
+            onClearCart={cart.clearCart}
+            onSetCheckoutStep={cart.setCheckoutStep}
+            onConfirmPurchase={() =>
+              cart.completePurchase((newSale) => {
+                purchases.prependNewSale(newSale)
+              })
+            }
+            onRefreshCart={cart.refreshCart}
+            onNavigateToStore={() => setActiveView('home')}
+            onNavigateToPurchases={() => setActiveView('purchases')}
+          />
+        )}
 
-          <Card.Content className="space-y-3 py-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted">Cliente Web (React + Vite)</span>
-              <Chip color="success" size="sm" variant="soft">
-                <Chip.Label>Operativo</Chip.Label>
-              </Chip>
-            </div>
+        {activeView === 'purchases' && (
+          <PurchasesPage
+            sales={purchases.filteredSales}
+            isLoading={purchases.isLoading}
+            error={purchases.error}
+            searchFolio={purchases.searchFolio}
+            expandedSaleId={purchases.expandedSaleId}
+            totalOrdersCount={purchases.totalOrdersCount}
+            totalSpentCents={purchases.totalSpentCents}
+            onSearchFolioChange={purchases.setSearchFolio}
+            onToggleExpandSale={purchases.toggleExpandedSale}
+            onReorderProduct={(product, quantity) => {
+              cart.addItem(product, quantity)
+              setActiveView('cart')
+            }}
+            onRefreshSales={purchases.refreshSales}
+            onNavigateToStore={() => setActiveView('home')}
+          />
+        )}
+      </AppShell>
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted">UI Kit (HeroUI v3)</span>
-              <Chip color="accent" size="sm" variant="soft">
-                <Chip.Label>Instalado</Chip.Label>
-              </Chip>
-            </div>
+      <SiriChatWidget
+        isOpen={salesAgent.isOpen}
+        phase={salesAgent.phase}
+        isMicActive={salesAgent.isMicActive}
+        isCameraActive={salesAgent.isCameraActive}
+        draftText={salesAgent.draftText}
+        messages={salesAgent.messages}
+        onClose={salesAgent.closeWidget}
+        onToggleMic={salesAgent.toggleMic}
+        onToggleCamera={salesAgent.toggleCamera}
+        onDraftChange={salesAgent.setDraftText}
+        onSendMessage={salesAgent.sendUserMessage}
+      />
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted">Backend GraphQL (/graphql)</span>
-              <Chip color={statusInfo.color} size="sm" variant="soft">
-                <Chip.Label>{statusInfo.label}</Chip.Label>
-              </Chip>
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted">Endpoint Gemini Live</span>
-              <code className="text-xs px-2 py-0.5 rounded bg-surface-secondary">
-                /ws/sales-agent
-              </code>
-            </div>
-          </Card.Content>
-
-          <Separator />
-
-          <Card.Footer className="flex items-center justify-between pt-3">
-            <span className="text-xs text-muted">
-              Última comprobación: {lastChecked}
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              isDisabled={backendStatus === 'checking'}
-              onPress={handleRefresh}
-            >
-              Verificar estado
-            </Button>
-          </Card.Footer>
-        </Card>
-      </div>
-    </main>
+      <SiriFloatingButton
+        isOpen={salesAgent.isOpen}
+        phase={salesAgent.phase}
+        isMicActive={salesAgent.isMicActive}
+        onToggle={salesAgent.toggleWidget}
+      />
+    </>
   )
 }
 
