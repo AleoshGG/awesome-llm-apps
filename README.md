@@ -37,3 +37,11 @@ Ejecutar migraciones con Alembic (desde `backend/`):
 ```bash
 alembic upgrade head
 ```
+
+Cargar el catálogo de productos mock (desde la raíz del proyecto):
+
+```bash
+docker compose exec -T db sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/src/core/db/seeds/mock_catalog.sql
+```
