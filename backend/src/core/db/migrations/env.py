@@ -11,6 +11,9 @@ from src.features.products.data.models.category_model import CategoryModel  # no
 from src.features.products.data.models.product_media_model import ProductMediaModel  # noqa: F401
 from src.features.products.data.models.product_model import ProductModel  # noqa: F401
 from src.features.providers.data.models.provider_model import ProviderModel  # noqa: F401
+from src.features.sales.data.models.cart_item_model import CartItemModel  # noqa: F401
+from src.features.sales.data.models.sale_item_model import SaleItemModel  # noqa: F401
+from src.features.sales.data.models.sale_model import SaleModel  # noqa: F401
 
 config = context.config
 
