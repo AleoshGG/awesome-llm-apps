@@ -21,7 +21,7 @@ export function AppShell({
   return (
     <div className="min-h-screen flex flex-col bg-[var(--canvas-bg)] text-slate-900 pb-24">
       <header className="sticky top-0 z-30 border-b border-blue-100 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-3.5">
           <button
             type="button"
             onClick={() => onNavigate('home')}
@@ -42,17 +42,17 @@ export function AppShell({
 
           <nav
             aria-label="Navegación principal de la tienda"
-            className="flex items-center gap-1.5 sm:gap-2"
+            className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 gap-1 border-t border-blue-100 bg-white/96 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur-md sm:static sm:z-auto sm:flex sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
           >
             <Button
               size="sm"
               variant={activeView === 'home' ? 'primary' : 'ghost'}
               onPress={() => onNavigate('home')}
-              className={
+              className={`w-full sm:w-auto ${
                 activeView === 'home'
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'text-slate-700 hover:bg-blue-50'
-              }
+              }`}
             >
               Tienda
             </Button>
@@ -61,11 +61,11 @@ export function AppShell({
               size="sm"
               variant={activeView === 'cart' ? 'primary' : 'ghost'}
               onPress={() => onNavigate('cart')}
-              className={
+              className={`w-full sm:w-auto ${
                 activeView === 'cart'
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'text-slate-700 hover:bg-blue-50'
-              }
+              }`}
             >
               <span>Carrito</span>
               <Chip
@@ -82,11 +82,11 @@ export function AppShell({
               size="sm"
               variant={activeView === 'purchases' ? 'primary' : 'ghost'}
               onPress={() => onNavigate('purchases')}
-              className={
+              className={`w-full sm:w-auto ${
                 activeView === 'purchases'
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'text-slate-700 hover:bg-blue-50'
-              }
+              }`}
             >
               <span>Mis compras</span>
               <Chip size="sm" color="accent" variant="soft" className="ml-1">
@@ -97,7 +97,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-3 py-4 sm:px-6 sm:py-6">
         {children}
       </main>
     </div>

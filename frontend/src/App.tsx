@@ -35,6 +35,7 @@ export function App() {
     if (view) setActiveView(view)
     if (command.action === 'catalog_search') {
       setAgentSearchPhase(command.phase)
+      setAgentProduct(null)
       if (command.phase === 'done') setAgentProducts(productsFromCommand(command))
     }
     if (command.action === 'catalog_product' && command.phase === 'done') {
@@ -153,6 +154,7 @@ export function App() {
         statusMessage={salesAgent.statusMessage}
         draftText={salesAgent.draftText}
         messages={salesAgent.messages}
+        featuredProduct={agentProduct ?? agentProducts?.[0] ?? null}
         onClose={salesAgent.closeWidget}
         onEndSession={salesAgent.endSession}
         onToggleMic={salesAgent.toggleMic}

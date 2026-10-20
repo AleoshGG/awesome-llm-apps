@@ -26,7 +26,7 @@ export function SiriFloatingButton({
   const isAnimated = isMicActive || phase === 'listening' || phase === 'speaking'
 
   return (
-    <div className="fixed bottom-5 left-5 z-50 flex items-center gap-2.5">
+    <div className={`fixed bottom-20 left-4 z-50 items-center gap-2.5 sm:bottom-5 sm:left-5 ${isOpen ? 'hidden sm:flex' : 'flex'}`}>
       <button
         type="button"
         onClick={onToggle}
