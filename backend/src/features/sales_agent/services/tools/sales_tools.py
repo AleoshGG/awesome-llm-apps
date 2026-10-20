@@ -91,7 +91,10 @@ class UseCaseTool(AgentTool):
 
 class SearchProductsTool(UseCaseTool):
     name = "search_products"
-    description = "Busca productos por texto, categoría, proveedor y rango de precio en centavos."
+    description = (
+        "Busca productos por texto, categoría, proveedor y rango de precio. "
+        "Los filtros *_price_cents usan centavos MXN internos: 60 pesos = 6000."
+    )
     result_key = "products"
     arguments = SearchArguments
 
@@ -101,7 +104,10 @@ class SearchProductsTool(UseCaseTool):
 
 class GetProductDetailsTool(UseCaseTool):
     name = "get_product_details"
-    description = "Consulta los detalles actuales de un producto por su identificador."
+    description = (
+        "Consulta los detalles actuales de un producto. price_list_cents es un "
+        "entero interno; divídelo entre 100 antes de comunicar pesos MXN."
+    )
     result_key = "product"
     arguments = ProductArguments
 
@@ -136,7 +142,10 @@ class RemoveFromCartTool(UseCaseTool):
 
 class GetCartTool(UseCaseTool):
     name = "get_cart"
-    description = "Consulta el carrito compartido con cantidades y precios actuales."
+    description = (
+        "Consulta el carrito compartido. Los precios *_cents son centavos internos; "
+        "divídelos entre 100 antes de comunicar pesos MXN."
+    )
     result_key = "cart"
     uses_cart = True
 

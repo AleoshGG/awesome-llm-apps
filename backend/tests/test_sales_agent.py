@@ -28,6 +28,7 @@ from src.features.sales_agent.domain.entities.client_input_entity import (
     ClientAudio, ClientClose, ClientPause, ClientResume, ClientText,
 )
 from src.features.sales_agent.domain.entities.realtime_session_config_entity import RealtimeSessionConfig
+from src.features.sales_agent.domain.prompts.sales_agent_prompt import SYSTEM_INSTRUCTION
 from src.features.sales_agent.domain.entities.tool_definition_entity import ToolDefinition
 from src.features.sales_agent.domain.entities.tool_result_entity import ToolResult
 from src.features.sales_agent.domain.exceptions import InvalidToolArgumentsError, ProviderConnectionError
@@ -47,6 +48,10 @@ def config():
 
 
 class EventMapperTests(unittest.TestCase):
+    def test_prompt_converts_internal_cents_to_spoken_mxn(self):
+        self.assertIn('`6000` se dice "60 pesos mexicanos"', SYSTEM_INSTRUCTION)
+        self.assertIn("60 pesos se envían a la herramienta como `6000`", SYSTEM_INSTRUCTION)
+
     def test_all_parts_and_transcript_lifecycle(self):
         mapper = GeminiEventMapper()
         events = mapper.to_domain(types.LiveServerMessage(server_content={
