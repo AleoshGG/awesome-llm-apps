@@ -4,6 +4,15 @@ import type { ProductDetailEntity } from '../../domain/entities/productDetail.en
 
 export type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name-asc'
 
+export const STORE_CATEGORIES = [
+  'Línea Blanca',
+  'Electrónica',
+  'Oficina',
+  'Abarrotes',
+] as const
+
+export type StoreCategory = (typeof STORE_CATEGORIES)[number]
+
 export interface UseCatalogPresentationReturn {
   allProducts: ProductDetailEntity[]
   filteredProducts: ProductDetailEntity[]
@@ -11,6 +20,7 @@ export interface UseCatalogPresentationReturn {
   isSearching: boolean
   error: string | null
   searchText: string
+  selectedCategory: string | null
   sortBy: SortOption
   activeProduct: ProductDetailEntity | null
   currentPage: number
@@ -19,6 +29,7 @@ export interface UseCatalogPresentationReturn {
   pageSize: number
   setPage: (page: number) => void
   setSearchText: (value: string) => void
+  setSelectedCategory: (category: string | null) => void
   setSortBy: (sort: SortOption) => void
   openProductDetail: (product: ProductDetailEntity) => void
   closeProductDetail: () => void
@@ -42,6 +53,9 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
   const [isSearchingNetwork, setIsSearchingNetwork] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [searchText, setSearchTextState] = useState<string>('')
+  const [selectedCategory, setSelectedCategoryState] = useState<string | null>(
+    null,
+  )
   const [sortBy, setSortBy] = useState<SortOption>('featured')
   const [activeProduct, setActiveProduct] =
     useState<ProductDetailEntity | null>(null)
@@ -93,7 +107,7 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
   // Búsqueda optimizada contra GraphQL (`searchProducts`) con AbortController, debounce y useTransition
   useEffect(() => {
     const trimmed = searchText.trim()
-    if (!trimmed) {
+    if (!trimmed && !selectedCategory) {
       if (searchedProducts !== null) {
         setSearchedProducts(null)
       }
@@ -107,14 +121,23 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     searchControllerRef.current = controller
 
     setIsSearchingNetwork(true)
+    const debounceMs = trimmed ? 300 : 0
 
     const timer = window.setTimeout(() => {
       void useCases.products.findByQuery
-        .execute({ name: trimmed, limit: 50 }, controller.signal)
+        .execute(
+          {
+            name: trimmed || undefined,
+            categoryName: selectedCategory || undefined,
+            limit: 50,
+          },
+          controller.signal,
+        )
         .then((results) => {
           if (controller.signal.aborted) return
           startTransition(() => {
             setSearchedProducts(results)
+            setCurrentPage(1)
             setError(null)
             setIsSearchingNetwork(false)
           })
@@ -134,18 +157,28 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
             })
           }
         })
-    }, 300)
+    }, debounceMs)
 
     return () => {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [searchText])
+  }, [searchText, selectedCategory])
 
   const setSearchText = (value: string) => {
     // Immediate responsive update to the text field
     setSearchTextState(value)
-    if (!value.trim()) {
+    if (!value.trim() && !selectedCategory) {
+      searchControllerRef.current?.abort()
+      setSearchedProducts(null)
+      setIsSearchingNetwork(false)
+    }
+  }
+
+  const setSelectedCategory = (category: string | null) => {
+    setSelectedCategoryState(category)
+    setCurrentPage(1)
+    if (!category && !searchText.trim()) {
       searchControllerRef.current?.abort()
       setSearchedProducts(null)
       setIsSearchingNetwork(false)
@@ -157,26 +190,32 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const isSearchActive = searchText.trim().length > 0 && searchedProducts !== null
+  const isSearchActive =
+    (searchText.trim().length > 0 || selectedCategory !== null) &&
+    searchedProducts !== null
 
   const filteredProducts = useMemo(() => {
     const baseList = isSearchActive ? searchedProducts : allProducts
 
+    let sorted = baseList
     if (sortBy === 'price-asc') {
-      return [...baseList].sort(
+      sorted = [...baseList].sort(
         (a, b) => a.priceListCents - b.priceListCents,
       )
-    }
-    if (sortBy === 'price-desc') {
-      return [...baseList].sort(
+    } else if (sortBy === 'price-desc') {
+      sorted = [...baseList].sort(
         (a, b) => b.priceListCents - a.priceListCents,
       )
+    } else if (sortBy === 'name-asc') {
+      sorted = [...baseList].sort((a, b) => a.name.localeCompare(b.name, 'es'))
     }
-    if (sortBy === 'name-asc') {
-      return [...baseList].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+
+    if (isSearchActive) {
+      const start = (currentPage - 1) * PAGE_SIZE
+      return sorted.slice(start, start + PAGE_SIZE)
     }
-    return baseList
-  }, [allProducts, searchedProducts, isSearchActive, sortBy])
+    return sorted
+  }, [allProducts, searchedProducts, isSearchActive, sortBy, currentPage])
 
   const openProductDetail = (product: ProductDetailEntity) => {
     setActiveProduct(product)
@@ -201,6 +240,7 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
   const resetFilters = () => {
     searchControllerRef.current?.abort()
     setSearchTextState('')
+    setSelectedCategoryState(null)
     setSearchedProducts(null)
     setSortBy('featured')
     setCurrentPage(1)
@@ -228,6 +268,7 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     isSearching,
     error,
     searchText,
+    selectedCategory,
     sortBy,
     activeProduct,
     currentPage,
@@ -236,6 +277,7 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     pageSize: PAGE_SIZE,
     setPage,
     setSearchText,
+    setSelectedCategory,
     setSortBy,
     openProductDetail,
     closeProductDetail,

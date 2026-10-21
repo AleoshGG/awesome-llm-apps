@@ -28,24 +28,29 @@ export function HomePage({
   const catalog = useCatalogPresentation()
 
   const hasActiveFilters =
-    catalog.searchText.trim().length > 0 || catalog.sortBy !== 'featured'
+    catalog.searchText.trim().length > 0 ||
+    catalog.selectedCategory !== null ||
+    catalog.sortBy !== 'featured'
 
   const displayCount = agentProducts !== null
     ? agentProducts.length
-    : catalog.searchText.trim().length > 0
-      ? catalog.filteredProducts.length
-      : catalog.totalItems
+    : catalog.totalItems
 
   return (
     <div className="space-y-6">
       <CatalogFilterBar
         searchText={catalog.searchText}
+        selectedCategory={catalog.selectedCategory}
         sortBy={catalog.sortBy}
         resultsCount={displayCount}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={(value) => {
           onClearAgentResults?.()
           catalog.setSearchText(value)
+        }}
+        onCategoryChange={(category) => {
+          onClearAgentResults?.()
+          catalog.setSelectedCategory(category)
         }}
         onSortChange={catalog.setSortBy}
         onResetFilters={() => {
