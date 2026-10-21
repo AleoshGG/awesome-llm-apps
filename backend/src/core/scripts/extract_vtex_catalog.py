@@ -109,6 +109,63 @@ def clean_html(text: str | None) -> str:
     return clean
 
 
+IGNORED_SPECIFICATIONS = {
+    "fraud check",
+    "tipo de envío",
+    "máximo de venta",
+    "multiean",
+    "identificador externo de categoría",
+    "url video",
+    "preventa",
+}
+
+
+def clean_product_description(text: str, prod_name: str = "") -> str:
+    """
+    Cleans product descriptions to remove boilerplate, disclaimers,
+    internal eCommerce flags, and repetitive marketing noise.
+    """
+    if not text:
+        return prod_name
+
+    # 1. Remove legal / visual disclaimers (reference images, changing labels/packaging)
+    disclaimers = [
+        r"Las imágenes[^.]*?(?:pueden cambiar[^\.]*\.?|sin previo aviso\.?|\.)",
+        r"El diseño[s]? de etiquetas[^.]*?(?:pueden cambiar[^\.]*\.?|sin previo aviso\.?|\.)",
+        r"Imágenes ilustrativas[^.]*?(?:\.)?",
+    ]
+    for d in disclaimers:
+        text = re.sub(d, "", text, flags=re.IGNORECASE)
+
+    # 2. Remove internal operational / boilerplate specs
+    noise_specs = [
+        r"Fraud Check:\s*[^|\-]+",
+        r"Tipo de envío:\s*[^|\-]+",
+        r"Máximo de venta:\s*[^|\-]+",
+        r"MultiEan:\s*[^|\-]+",
+        r"Identificador Externo(?: de Categoría)?:\s*[^|\-]+",
+        r"\bBenefits(?:\s*\d+)?(?::\s*[^|\-]+)?",
+        r"URL Video:\s*[^|\-]+",
+        r"Preventa:\s*[^|\-]+",
+    ]
+    for pattern in noise_specs:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+
+    # 3. Clean up separators and whitespace carefully
+    text = re.sub(r"(\s*\|\s*)+", " | ", text)
+    text = re.sub(r"(\s*-\s*\|\s*)+", " - ", text)
+    text = re.sub(r"(\s*\|\s*-\s*)+", " - ", text)
+    text = re.sub(r"\s*\|\s*$", "", text)
+    text = re.sub(r"\s*-\s*$", "", text)
+    text = re.sub(r"^\s*-\s*", "", text)
+    text = re.sub(r"^\s*\|\s*", "", text)
+    text = re.sub(r"\s+", " ", text).strip(" -|")
+
+    if not text and prod_name:
+        text = prod_name
+    return text
+
+
 def escape_sql(value: Any) -> str:
     """Escapes string literals for PostgreSQL insertion, ensuring single-line strings."""
     if value is None:
@@ -259,25 +316,32 @@ class VtexCatalogExtractor:
                     continue
 
                 # Build clean description and attach specifications if available
-                raw_desc = clean_html(p.get("description"))
+                prod_name = p.get("productName", "").strip()
+                raw_desc = clean_product_description(clean_html(p.get("description")), prod_name)
                 specs_summary: list[str] = []
-                for spec_name in (p.get("allSpecifications") or [])[:5]:
+                for spec_name in (p.get("allSpecifications") or []):
+                    sn_clean = spec_name.strip().lower()
+                    if sn_clean in IGNORED_SPECIFICATIONS or sn_clean.startswith("benefits"):
+                        continue
                     spec_vals = p.get(spec_name)
                     if spec_vals and isinstance(spec_vals, list):
                         clean_vals = [re.sub(r"[\r\n\t]+", " ", str(v)).strip() for v in spec_vals if str(v).strip()]
                         if clean_vals:
                             specs_summary.append(f"{spec_name}: {', '.join(clean_vals)}")
+                    if len(specs_summary) >= 5:
+                        break
 
-                desc_parts = [raw_desc] if raw_desc else [p.get("productName", "")]
+                desc_parts = [raw_desc] if raw_desc else [prod_name]
                 if specs_summary:
                     desc_parts.append(" | ".join(specs_summary))
-                full_description = re.sub(r"[\r\n\t]+", " ", " - ".join(desc_parts)).strip()
+                joined_desc = " - ".join(desc_parts)
+                final_description = clean_product_description(joined_desc, prod_name)
 
                 # Instantiate ProductModel
                 product_model = ProductModel(
                     id=prod_id,
-                    name=p.get("productName", "").strip(),
-                    description=full_description[:1000],  # Keep within reasonable text size
+                    name=prod_name,
+                    description=final_description[:1000],  # Keep within reasonable text size
                     price_list_cents=price_cents,
                     provider_id=prov_id,
                     category_id=category_id,
