@@ -131,7 +131,18 @@ se construyen con los resultados de las tools del backend; categorías y proveed
 no provocan navegación. `add_to_cart.quantity` vale `1` cuando se omite.
 
 Herramientas: `search_products`, `get_product_details`, `list_categories`,
-`list_providers`, `add_to_cart`, `remove_from_cart`, `get_cart`, `checkout`.
+`list_providers`, `add_to_cart`, `remove_from_cart`, `get_cart`,
+`build_basic_basket`, `checkout`.
+`build_basic_basket` usa un subagente Flash para contrastar la canasta básica
+mexicana estándar contra el catálogo real. Conserva artículos ajenos, completa
+cantidades existentes y reporta coincidencias, presentaciones cercanas y faltantes;
+si el subagente falla, no modifica el carrito.
+
+Después de altas individuales solicitadas al asistente, Gemini razona un único
+producto complementario, lo valida con `search_products` y lo ofrece en el chat con
+su precio. Una aceptación agrega el producto sin encadenar otra oferta. Este flujo
+no se activa para la canasta básica, checkout ni altas directas desde GraphQL, y no
+presenta la sugerencia como historial de compras de otros clientes.
 Los precios son enteros en centavos; las fechas se serializan en ISO 8601.
 `checkout` exige `confirmed: true`: el prompt instruye al modelo a pedir confirmación
 explícita del cliente tras resumir el carrito. Este campo no constituye una

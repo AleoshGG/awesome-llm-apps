@@ -51,6 +51,16 @@ class EventMapperTests(unittest.TestCase):
     def test_prompt_converts_internal_cents_to_spoken_mxn(self):
         self.assertIn('`6000` se dice "60 pesos mexicanos"', SYSTEM_INSTRUCTION)
         self.assertIn("60 pesos se envían a la herramienta como `6000`", SYSTEM_INSTRUCTION)
+        self.assertIn("build_basic_basket", SYSTEM_INSTRUCTION)
+
+    def test_prompt_requires_one_catalog_backed_cross_sell_without_chaining(self):
+        self.assertIn("una sola recomendación complementaria", SYSTEM_INSTRUCTION)
+        self.assertIn("hasta tres búsquedas enfocadas", SYSTEM_INSTRUCTION)
+        self.assertIn("Elige exactamente un producto real", SYSTEM_INSTRUCTION)
+        self.assertIn("no generes otra recomendación", SYSTEM_INSTRUCTION)
+        self.assertIn("No afirmes que otros clientes compraron", SYSTEM_INSTRUCTION)
+        self.assertIn("nombre exacto", SYSTEM_INSTRUCTION)
+        self.assertIn("precio a MXN", SYSTEM_INSTRUCTION)
 
     def test_all_parts_and_transcript_lifecycle(self):
         mapper = GeminiEventMapper()
@@ -92,7 +102,9 @@ class EventMapperTests(unittest.TestCase):
 
     def test_all_tool_schemas_can_be_declared_to_gemini(self):
         declarations = to_gemini_tools(build_tool_registry().definitions())[0].function_declarations
-        self.assertEqual(len(declarations), 8)
+        self.assertEqual(len(declarations), 9)
+        basket = next(d for d in declarations if d.name == "build_basic_basket")
+        self.assertNotIn("required", basket.parameters_json_schema)
         checkout = next(d for d in declarations if d.name == "checkout")
         self.assertEqual(checkout.parameters_json_schema["required"], ["confirmed"])
         self.assertEqual(checkout.behavior, types.Behavior.NON_BLOCKING)
@@ -113,6 +125,12 @@ class EventMapperTests(unittest.TestCase):
                          {"products": [{"id": "p1"}]})
         self.assertEqual((event.action, event.payload["products"][0]["id"]),
                          ("catalog_search", "p1"))
+        basket = _tool_ui(ToolCall("b", "build_basic_basket", {}), "done", {
+            "cart": [{"product": {"id": "p1"}, "quantity": 1}],
+            "basket": {"coverage": {"matched": 1, "requested": 24}},
+        })
+        self.assertEqual((basket.action, basket.payload["operation"]),
+                         ("cart_update", "add"))
 
 
 class GeminiAdapterTests(unittest.IsolatedAsyncioTestCase):

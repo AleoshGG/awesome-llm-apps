@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -22,6 +22,32 @@ class CartRepositoryAdapter(CartRepository):
         stmt = stmt.on_conflict_do_update(
             index_elements=[CartItemModel.product_id],
             set_={"quantity": CartItemModel.quantity + quantity},
+        )
+        try:
+            await self._session.execute(stmt)
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        return await self.find_all()
+
+    async def ensure_minimum_quantities(
+        self, quantities: dict[str, int]
+    ) -> list[CartItem]:
+        if not quantities:
+            return await self.find_all()
+        stmt = insert(CartItemModel).values([
+            {"product_id": product_id, "quantity": quantity}
+            for product_id, quantity in quantities.items()
+        ])
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[CartItemModel.product_id],
+            set_={
+                "quantity": func.greatest(
+                    CartItemModel.quantity,
+                    stmt.excluded.quantity,
+                )
+            },
         )
         try:
             await self._session.execute(stmt)

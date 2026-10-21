@@ -3,6 +3,7 @@ import base64
 import binascii
 
 from fastapi import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketDisconnected
 from pydantic import ValidationError
 
 from src.features.sales_agent.domain.entities.agent_event_entity import AgentEvent
@@ -66,4 +67,7 @@ class WebSocketClientChannelAdapter:
 
     async def send(self, event: AgentEvent) -> None:
         async with self._send_lock:
-            await self._websocket.send_json(event_payload(event))
+            try:
+                await self._websocket.send_json(event_payload(event))
+            except (WebSocketDisconnected, RuntimeError) as exc:
+                raise WebSocketDisconnect(code=1000) from exc

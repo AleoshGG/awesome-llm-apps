@@ -9,6 +9,12 @@ class CartRepository(ABC):
         pass
 
     @abstractmethod
+    async def ensure_minimum_quantities(
+        self, quantities: dict[str, int]
+    ) -> list[CartItem]:
+        pass
+
+    @abstractmethod
     async def remove(self, product_id: str) -> list[CartItem]:
         pass
 

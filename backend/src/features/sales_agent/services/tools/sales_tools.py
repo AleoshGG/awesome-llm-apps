@@ -150,6 +150,21 @@ class GetCartTool(UseCaseTool):
     uses_cart = True
 
 
+class BuildBasicBasketTool(UseCaseTool):
+    name = "build_basic_basket"
+    description = (
+        "Construye la canasta básica mexicana estándar con los productos reales "
+        "disponibles, completa cantidades faltantes y reporta coincidencias y faltantes."
+    )
+    result_key = "basket"
+    uses_cart = True
+
+    async def execute(self, args: dict) -> dict:
+        result = await super().execute(args)
+        basket = result["basket"]
+        return {"cart": basket.pop("cart"), "basket": basket}
+
+
 class CheckoutTool(UseCaseTool):
     name = "checkout"
     description = "Registra la venta y vacía el carrito tras confirmación explícita. No cobra dinero."

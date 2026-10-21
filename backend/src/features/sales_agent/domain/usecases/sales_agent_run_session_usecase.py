@@ -91,6 +91,7 @@ TOOL_UI = {
     "add_to_cart": ("cart_update", "add"),
     "remove_from_cart": ("cart_update", "remove"),
     "get_cart": ("cart_update", "view"),
+    "build_basic_basket": ("cart_update", "add"),
     "checkout": ("checkout", "checkout"),
 }
 

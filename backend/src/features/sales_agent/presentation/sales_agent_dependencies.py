@@ -17,14 +17,16 @@ from src.features.sales.domain.usecases.add_product_to_cart_usecase import AddPr
 from src.features.sales.domain.usecases.get_cart_usecase import GetCartUseCase
 from src.features.sales.domain.usecases.register_sale_usecase import RegisterSaleUseCase
 from src.features.sales.domain.usecases.remove_product_from_cart_usecase import RemoveProductFromCartUseCase
+from src.features.sales_agent.data.services.deterministic_basic_basket_service import DeterministicBasicBasketService
 from src.features.sales_agent.data.services.gemini_realtime_voice_service_adapter import GeminiRealtimeVoiceServiceAdapter
 from src.features.sales_agent.data.services.adk_visual_product_search_service import AdkVisualProductSearchService
 from src.features.sales_agent.domain.entities.realtime_session_config_entity import RealtimeSessionConfig
 from src.features.sales_agent.domain.prompts.sales_agent_prompt import SYSTEM_INSTRUCTION
 from src.features.sales_agent.domain.tools.tool_registry import ToolRegistry
+from src.features.sales_agent.domain.usecases.build_basic_basket_usecase import BuildBasicBasketUseCase
 from src.features.sales_agent.domain.usecases.sales_agent_run_session_usecase import SalesAgentRunSessionUseCase
 from src.features.sales_agent.services.tools.sales_tools import (
-    AddToCartTool, CheckoutTool, GetCartTool, GetProductDetailsTool,
+    AddToCartTool, BuildBasicBasketTool, CheckoutTool, GetCartTool, GetProductDetailsTool,
     ListCategoriesTool, ListProvidersTool, RemoveFromCartTool, SearchProductsTool,
 )
 
@@ -38,6 +40,11 @@ def usecase_provider(factory):
 
 
 def build_tool_registry() -> ToolRegistry:
+    basket_service = DeterministicBasicBasketService(
+        usecase_provider(
+            lambda session: ProductFindByQueryUseCase(ProductRepositoryAdapter(session))
+        ),
+    )
     return ToolRegistry([
         SearchProductsTool(usecase_provider(
             lambda session: ProductFindByQueryUseCase(ProductRepositoryAdapter(session))
@@ -59,6 +66,11 @@ def build_tool_registry() -> ToolRegistry:
         )),
         GetCartTool(usecase_provider(
             lambda session: GetCartUseCase(CartRepositoryAdapter(session))
+        )),
+        BuildBasicBasketTool(usecase_provider(
+            lambda session: BuildBasicBasketUseCase(
+                CartRepositoryAdapter(session), basket_service
+            )
         )),
         CheckoutTool(usecase_provider(
             lambda session: RegisterSaleUseCase(SaleRepositoryAdapter(session))

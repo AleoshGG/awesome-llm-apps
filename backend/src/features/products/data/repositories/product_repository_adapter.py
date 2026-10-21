@@ -58,6 +58,14 @@ class ProductRepositoryAdapter(ProductRepository):
             text_conditions.append(ProductModel.name.ilike(name_pattern))
             text_conditions.append(ProductModel.description.ilike(name_pattern))
 
+        for term in query.terms or ():
+            if term.strip():
+                pattern = f"%{term.strip()}%"
+                text_conditions.extend((
+                    ProductModel.name.ilike(pattern),
+                    ProductModel.description.ilike(pattern),
+                ))
+
         if query.description and query.description.strip():
             desc_pattern = f"%{query.description.strip()}%"
             text_conditions.append(ProductModel.description.ilike(desc_pattern))
