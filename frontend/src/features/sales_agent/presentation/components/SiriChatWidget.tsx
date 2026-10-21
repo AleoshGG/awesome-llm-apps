@@ -117,8 +117,8 @@ export function SiriChatWidget(props: SiriChatWidgetProps) {
           return (
             <article className="ml-0 max-w-[94%] overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-2xs" aria-label={`Producto encontrado: ${product.name}`}>
               <div className="flex items-center gap-3 p-2.5">
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                  {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-[10px] text-slate-400">Sin imagen</span>}
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1.5">
+                  {image ? <img src={image} alt="" className="max-h-full max-w-full object-contain object-center" /> : <span className="flex h-full items-center justify-center text-[10px] text-slate-400">Sin imagen</span>}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] text-slate-500">Encontré esta opción</p>

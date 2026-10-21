@@ -23,13 +23,13 @@ export function ProductCard({
   return (
     <Card className={`group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-blue-100/90 bg-white shadow-2xs transition-colors hover:border-blue-300 ${isHighlighted ? 'agent-result-highlight' : ''}`}>
       <div>
-        <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100">
+        <div className="relative flex aspect-4/3 w-full items-center justify-center overflow-hidden border-b border-slate-100 bg-white p-4">
           {mainImage ? (
             <img
               src={mainImage}
               alt={product.name}
               loading="lazy"
-              className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-103"
+              className="max-h-full max-w-full object-contain object-center transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-slate-400">

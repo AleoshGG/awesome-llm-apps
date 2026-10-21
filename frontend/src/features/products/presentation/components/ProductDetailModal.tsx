@@ -43,25 +43,64 @@ export function ProductDetailModal({
         <Modal.Container size="lg" placement="center">
           <Modal.Dialog>
             <Modal.Header className="flex items-start justify-between gap-3">
-              <div>
-                <span className="block text-xs font-semibold text-blue-700 pb-0.5">
-                  {product.provider.name}
-                </span>
-                <Modal.Heading className="font-display text-xl font-bold text-slate-900">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-blue-700">
+                    {product.provider.name}
+                  </span>
+                  {product.category?.name && (
+                    <Chip size="sm" color="accent" variant="soft">
+                      <Chip.Label>{product.category.name}</Chip.Label>
+                    </Chip>
+                  )}
+                </div>
+                <Modal.Heading className="font-display text-xl font-bold text-slate-900 leading-snug">
                   {product.name}
                 </Modal.Heading>
               </div>
               <Modal.CloseTrigger />
             </Modal.Header>
 
-            <Modal.Body className="space-y-4">
+            <Modal.Body className="max-h-[72vh] space-y-4 overflow-y-auto">
               {currentImage && (
-                <div className="aspect-16/10 w-full overflow-hidden rounded-2xl bg-slate-100 border border-slate-100">
+                <div className="relative flex h-64 sm:h-80 w-full items-center justify-center overflow-hidden rounded-2xl border border-blue-100/80 bg-white p-4 sm:p-6 shadow-2xs">
                   <img
                     src={currentImage}
                     alt={product.name}
-                    className="h-full w-full object-cover object-center transition-all duration-200"
+                    className="max-h-full max-w-full object-contain object-center transition-all duration-200"
                   />
+
+                  {mediaList.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Imagen anterior"
+                        onClick={() =>
+                          setSelectedImageIndex((prev) =>
+                            prev === 0 ? mediaList.length - 1 : prev - 1,
+                          )
+                        }
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-xs transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 cursor-pointer"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Imagen siguiente"
+                        onClick={() =>
+                          setSelectedImageIndex((prev) =>
+                            prev === mediaList.length - 1 ? 0 : prev + 1,
+                          )
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-xs transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 cursor-pointer"
+                      >
+                        ›
+                      </button>
+                      <span className="absolute bottom-2.5 right-3 rounded-full bg-slate-900/70 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-xs tabular-price">
+                        {selectedImageIndex + 1} / {mediaList.length}
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -72,16 +111,16 @@ export function ProductDetailModal({
                       key={item.id || idx}
                       type="button"
                       onClick={() => setSelectedImageIndex(idx)}
-                      className={`relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl border-2 transition-all cursor-pointer ${
+                      className={`relative aspect-square w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white p-1.5 transition-all cursor-pointer ${
                         selectedImageIndex === idx
-                          ? 'border-blue-600 ring-2 ring-blue-600/20 scale-102'
-                          : 'border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300'
+                          ? 'border-blue-600 ring-2 ring-blue-600/20'
+                          : 'border-slate-200 opacity-75 hover:opacity-100 hover:border-slate-300'
                       }`}
                     >
                       <img
                         src={item.url}
                         alt={`${product.name} - vista ${idx + 1}`}
-                        className="h-full w-full object-cover object-center"
+                        className="h-full w-full object-contain object-center"
                       />
                     </button>
                   ))}

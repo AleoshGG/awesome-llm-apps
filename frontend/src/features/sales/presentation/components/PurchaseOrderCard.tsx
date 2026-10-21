@@ -78,12 +78,12 @@ export function PurchaseOrderCard({
                     className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white border border-slate-200">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-1">
                         {mainImg ? (
                           <img
                             src={mainImg}
                             alt={item.product.name}
-                            className="h-full w-full object-cover"
+                            className="max-h-full max-w-full object-contain object-center"
                           />
                         ) : null}
                       </div>

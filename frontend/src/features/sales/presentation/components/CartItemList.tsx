@@ -65,12 +65,12 @@ export function CartItemList({
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3.5">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 border border-slate-200/60">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/70 bg-white p-1.5">
                   {mainImage ? (
                     <img
                       src={mainImage}
                       alt={item.product.name}
-                      className="h-full w-full object-cover object-center"
+                      className="max-h-full max-w-full object-contain object-center"
                     />
                   ) : null}
                 </div>
