@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useCases } from '../../../../core/di/useCasesContainer'
 import type { ProductDetailEntity } from '../../domain/entities/productDetail.entity'
 
@@ -8,10 +8,16 @@ export interface UseCatalogPresentationReturn {
   allProducts: ProductDetailEntity[]
   filteredProducts: ProductDetailEntity[]
   isLoading: boolean
+  isSearching: boolean
   error: string | null
   searchText: string
   sortBy: SortOption
   activeProduct: ProductDetailEntity | null
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  pageSize: number
+  setPage: (page: number) => void
   setSearchText: (value: string) => void
   setSortBy: (sort: SortOption) => void
   openProductDetail: (product: ProductDetailEntity) => void
@@ -20,9 +26,12 @@ export interface UseCatalogPresentationReturn {
   reloadCatalog: () => void
 }
 
+const PAGE_SIZE = 24
+
 /**
  * Hook de gestión de estado para la pantalla Tienda (Home).
  * Conecta con los endpoints GraphQL `products`, `searchProducts` y `product(productId)`.
+ * Incluye paginación en el servidor y búsqueda no bloqueante con AbortController y useTransition.
  */
 export function useCatalogPresentation(): UseCatalogPresentationReturn {
   const [allProducts, setAllProducts] = useState<ProductDetailEntity[]>([])
@@ -30,21 +39,38 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     ProductDetailEntity[] | null
   >(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isSearchingNetwork, setIsSearchingNetwork] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [searchText, setSearchTextState] = useState<string>('')
   const [sortBy, setSortBy] = useState<SortOption>('featured')
   const [activeProduct, setActiveProduct] =
     useState<ProductDetailEntity | null>(null)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [totalProductsCount, setTotalProductsCount] = useState<number>(0)
   const [reloadTick, setReloadTick] = useState<number>(0)
 
-  // Carga inicial del catálogo completo desde GraphQL (`products`)
+  // React Concurrent transition for search rendering
+  const [isPending, startTransition] = useTransition()
+  const searchControllerRef = useRef<AbortController | null>(null)
+
+  const isSearching = isSearchingNetwork || isPending
+
+  // Carga paginada del catálogo desde GraphQL (`products` con limit y offset)
   useEffect(() => {
     let active = true
+    setIsLoading(true)
 
-    void useCases.products.findAll
-      .execute()
-      .then((products) => {
+    const offset = (currentPage - 1) * PAGE_SIZE
+
+    void Promise.all([
+      useCases.products.count.execute().catch(() => 0),
+      useCases.products.findAll.execute(PAGE_SIZE, offset),
+    ])
+      .then(([count, products]) => {
         if (!active) return
+        if (count > 0) {
+          setTotalProductsCount(count)
+        }
         setAllProducts(products)
         setError(null)
         setIsLoading(false)
@@ -62,51 +88,79 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     return () => {
       active = false
     }
-  }, [reloadTick])
+  }, [currentPage, reloadTick])
 
-  // Búsqueda contra GraphQL (`searchProducts`) con debounce de 250 ms
+  // Búsqueda optimizada contra GraphQL (`searchProducts`) con AbortController, debounce y useTransition
   useEffect(() => {
     const trimmed = searchText.trim()
     if (!trimmed) {
+      if (searchedProducts !== null) {
+        setSearchedProducts(null)
+      }
+      setIsSearchingNetwork(false)
       return
     }
 
-    let active = true
+    // Cancel previous in-flight search request
+    searchControllerRef.current?.abort()
+    const controller = new AbortController()
+    searchControllerRef.current = controller
+
+    setIsSearchingNetwork(true)
+
     const timer = window.setTimeout(() => {
       void useCases.products.findByQuery
-        .execute({ name: trimmed })
+        .execute({ name: trimmed, limit: 50 }, controller.signal)
         .then((results) => {
-          if (!active) return
-          setSearchedProducts(results)
-          setError(null)
+          if (controller.signal.aborted) return
+          startTransition(() => {
+            setSearchedProducts(results)
+            setError(null)
+            setIsSearchingNetwork(false)
+          })
         })
         .catch((err: unknown) => {
-          if (!active) return
-          setError(
-            err instanceof Error
-              ? err.message
-              : 'Ocurrió un problema al buscar productos.',
-          )
+          if (controller.signal.aborted) return
+          const isAbort =
+            err instanceof DOMException && err.name === 'AbortError'
+          if (!isAbort) {
+            startTransition(() => {
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : 'Ocurrió un problema al buscar productos.',
+              )
+              setIsSearchingNetwork(false)
+            })
+          }
         })
-    }, 250)
+    }, 300)
 
     return () => {
-      active = false
       window.clearTimeout(timer)
+      controller.abort()
     }
   }, [searchText])
 
   const setSearchText = (value: string) => {
+    // Immediate responsive update to the text field
     setSearchTextState(value)
     if (!value.trim()) {
+      searchControllerRef.current?.abort()
       setSearchedProducts(null)
+      setIsSearchingNetwork(false)
     }
   }
 
+  const setPage = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const isSearchActive = searchText.trim().length > 0 && searchedProducts !== null
+
   const filteredProducts = useMemo(() => {
-    const trimmed = searchText.trim()
-    const baseList =
-      trimmed && searchedProducts !== null ? searchedProducts : allProducts
+    const baseList = isSearchActive ? searchedProducts : allProducts
 
     if (sortBy === 'price-asc') {
       return [...baseList].sort(
@@ -122,7 +176,7 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
       return [...baseList].sort((a, b) => a.name.localeCompare(b.name, 'es'))
     }
     return baseList
-  }, [allProducts, searchedProducts, searchText, sortBy])
+  }, [allProducts, searchedProducts, isSearchActive, sortBy])
 
   const openProductDetail = (product: ProductDetailEntity) => {
     setActiveProduct(product)
@@ -145,9 +199,11 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
   }
 
   const resetFilters = () => {
+    searchControllerRef.current?.abort()
     setSearchTextState('')
     setSearchedProducts(null)
     setSortBy('featured')
+    setCurrentPage(1)
   }
 
   const reloadCatalog = () => {
@@ -156,14 +212,29 @@ export function useCatalogPresentation(): UseCatalogPresentationReturn {
     setReloadTick((prev) => prev + 1)
   }
 
+  const totalItems = isSearchActive
+    ? searchedProducts.length
+    : totalProductsCount
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil((isSearchActive ? searchedProducts.length : totalProductsCount) / PAGE_SIZE),
+  )
+
   return {
     allProducts,
     filteredProducts,
     isLoading,
+    isSearching,
     error,
     searchText,
     sortBy,
     activeProduct,
+    currentPage,
+    totalPages,
+    totalItems,
+    pageSize: PAGE_SIZE,
+    setPage,
     setSearchText,
     setSortBy,
     openProductDetail,

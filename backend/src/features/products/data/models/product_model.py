@@ -43,4 +43,5 @@ class ProductModel(Base):
         "ProductMediaModel",
         back_populates="product",
         cascade="all, delete-orphan",
+        order_by="desc(ProductMediaModel.is_main), ProductMediaModel.id",
     )

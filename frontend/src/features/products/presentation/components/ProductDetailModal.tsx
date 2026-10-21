@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Avatar, Button, Chip, Modal, Separator } from '@heroui/react'
 import { formatCentsToMXN } from '../../../../core/utils/formatters'
 import type { ProductDetailEntity } from '../../domain/entities/productDetail.entity'
@@ -15,12 +16,21 @@ export function ProductDetailModal({
   onClose,
   onAddToCart,
 }: ProductDetailModalProps) {
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
+
+  useEffect(() => {
+    setSelectedImageIndex(0)
+  }, [product?.id])
+
   if (!product) {
     return null
   }
 
-  const mainImage =
-    product.media.find((item) => item.isMain)?.url ?? product.media[0]?.url
+  const mediaList = product.media.filter((item) => Boolean(item.url))
+  const currentImage =
+    mediaList[selectedImageIndex]?.url ??
+    product.media.find((item) => item.isMain)?.url ??
+    product.media[0]?.url
 
   return (
     <Modal
@@ -45,13 +55,36 @@ export function ProductDetailModal({
             </Modal.Header>
 
             <Modal.Body className="space-y-4">
-              {mainImage && (
-                <div className="aspect-16/10 w-full overflow-hidden rounded-2xl bg-slate-100">
+              {currentImage && (
+                <div className="aspect-16/10 w-full overflow-hidden rounded-2xl bg-slate-100 border border-slate-100">
                   <img
-                    src={mainImage}
+                    src={currentImage}
                     alt={product.name}
-                    className="h-full w-full object-cover object-center"
+                    className="h-full w-full object-cover object-center transition-all duration-200"
                   />
+                </div>
+              )}
+
+              {mediaList.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+                  {mediaList.map((item, idx) => (
+                    <button
+                      key={item.id || idx}
+                      type="button"
+                      onClick={() => setSelectedImageIndex(idx)}
+                      className={`relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl border-2 transition-all cursor-pointer ${
+                        selectedImageIndex === idx
+                          ? 'border-blue-600 ring-2 ring-blue-600/20 scale-102'
+                          : 'border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={item.url}
+                        alt={`${product.name} - vista ${idx + 1}`}
+                        className="h-full w-full object-cover object-center"
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
 

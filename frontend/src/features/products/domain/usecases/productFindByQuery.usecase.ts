@@ -9,7 +9,10 @@ export class ProductFindByQueryUseCase {
     this.repository = repository
   }
 
-  async execute(query: ProductQueryEntity): Promise<ProductDetailEntity[]> {
-    return this.repository.findByQuery(query)
+  async execute(
+    query: ProductQueryEntity,
+    signal?: AbortSignal,
+  ): Promise<ProductDetailEntity[]> {
+    return this.repository.findByQuery(query, signal)
   }
 }

@@ -1,6 +1,7 @@
 import { CategoryRepositoryImpl } from '../../features/products/data/repositories/category.repository.impl'
 import { ProductRepositoryImpl } from '../../features/products/data/repositories/product.repository.impl'
 import { CategoryFindAllUseCase } from '../../features/products/domain/usecases/categoryFindAll.usecase'
+import { ProductCountUseCase } from '../../features/products/domain/usecases/productCount.usecase'
 import { ProductFindAllUseCase } from '../../features/products/domain/usecases/productFindAll.usecase'
 import { ProductFindByIdUseCase } from '../../features/products/domain/usecases/productFindById.usecase'
 import { ProductFindByQueryUseCase } from '../../features/products/domain/usecases/productFindByQuery.usecase'
@@ -26,6 +27,7 @@ export const useCases = {
     findById: new ProductFindByIdUseCase(productRepository),
     findByQuery: new ProductFindByQueryUseCase(productRepository),
     findAllCategories: new CategoryFindAllUseCase(categoryRepository),
+    count: new ProductCountUseCase(productRepository),
   },
   providers: {
     findAll: new ProviderFindAllUseCase(providerRepository),

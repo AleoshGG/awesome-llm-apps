@@ -8,4 +8,6 @@ export interface ProductQueryEntity {
   providerName?: string | null
   minPriceCents?: number | null
   maxPriceCents?: number | null
+  limit?: number | null
+  offset?: number | null
 }

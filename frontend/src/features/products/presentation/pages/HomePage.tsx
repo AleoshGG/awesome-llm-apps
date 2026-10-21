@@ -1,6 +1,7 @@
 import { Button, Spinner } from '@heroui/react'
 import type { ProductDetailEntity } from '../../domain/entities/productDetail.entity'
 import { CatalogFilterBar } from '../components/CatalogFilterBar'
+import { PaginationControls } from '../components/PaginationControls'
 import { ProductCard } from '../components/ProductCard'
 import { ProductDetailModal } from '../components/ProductDetailModal'
 import { useCatalogPresentation } from '../hooks/useCatalogPresentation'
@@ -29,12 +30,18 @@ export function HomePage({
   const hasActiveFilters =
     catalog.searchText.trim().length > 0 || catalog.sortBy !== 'featured'
 
+  const displayCount = agentProducts !== null
+    ? agentProducts.length
+    : catalog.searchText.trim().length > 0
+      ? catalog.filteredProducts.length
+      : catalog.totalItems
+
   return (
     <div className="space-y-6">
       <CatalogFilterBar
         searchText={catalog.searchText}
         sortBy={catalog.sortBy}
-        resultsCount={(agentProducts ?? catalog.filteredProducts).length}
+        resultsCount={displayCount}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={(value) => {
           onClearAgentResults?.()
@@ -46,6 +53,7 @@ export function HomePage({
           catalog.resetFilters()
         }}
         isAgentSearching={agentSearchPhase === 'running'}
+        isSearching={catalog.isSearching}
       />
 
       {catalog.error && (
@@ -99,6 +107,17 @@ export function HomePage({
             />
           ))}
         </div>
+      )}
+
+      {agentProducts === null && !catalog.isLoading && catalog.totalPages > 1 && (
+        <PaginationControls
+          currentPage={catalog.currentPage}
+          totalPages={catalog.totalPages}
+          totalItems={catalog.totalItems}
+          pageSize={catalog.pageSize}
+          onPageChange={catalog.setPage}
+          isLoading={catalog.isLoading}
+        />
       )}
 
       <ProductDetailModal

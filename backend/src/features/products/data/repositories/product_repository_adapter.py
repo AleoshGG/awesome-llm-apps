@@ -27,8 +27,16 @@ class ProductRepositoryAdapter(ProductRepository):
             )
         )
 
-    async def find_all(self) -> list[ProductDetail]:
-        stmt = self._base_detail_stmt()
+    async def find_all(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProductDetail]:
+        stmt = self._base_detail_stmt().order_by(ProductModel.id.asc())
+        if offset is not None and offset > 0:
+            stmt = stmt.offset(offset)
+        if limit is not None and limit > 0:
+            stmt = stmt.limit(limit)
         result = await self._session.scalars(stmt)
         models = result.unique().all()
         return [ProductMapper.to_detail_domain(model) for model in models]
@@ -73,6 +81,12 @@ class ProductRepositoryAdapter(ProductRepository):
 
         if query.max_price_cents is not None:
             stmt = stmt.where(ProductModel.price_list_cents <= query.max_price_cents)
+
+        stmt = stmt.order_by(ProductModel.id.asc())
+        if query.offset is not None and query.offset > 0:
+            stmt = stmt.offset(query.offset)
+        effective_limit = query.limit if (query.limit is not None and query.limit > 0) else 50
+        stmt = stmt.limit(effective_limit)
 
         result = await self._session.scalars(stmt)
         models = result.unique().all()

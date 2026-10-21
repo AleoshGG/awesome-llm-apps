@@ -8,7 +8,7 @@ export class ProductFindAllUseCase {
     this.repository = repository
   }
 
-  async execute(): Promise<ProductDetailEntity[]> {
-    return this.repository.findAll()
+  async execute(limit?: number, offset?: number): Promise<ProductDetailEntity[]> {
+    return this.repository.findAll(limit, offset)
   }
 }

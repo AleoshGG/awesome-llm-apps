@@ -6,7 +6,11 @@ from src.features.products.domain.entities.product_query_entity import ProductQu
 
 class ProductRepository(ABC):
     @abstractmethod
-    async def find_all(self) -> list[ProductDetail]:
+    async def find_all(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProductDetail]:
         pass
 
     @abstractmethod

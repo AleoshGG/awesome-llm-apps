@@ -35,9 +35,14 @@ const PRODUCT_DETAIL_FIELDS = /* GraphQL */ `
 
 export const GRAPHQL_OPERATIONS_DOC = {
   queries: {
+    GET_PRODUCTS_COUNT: /* GraphQL */ `
+      query GetProductsCount {
+        productsCount
+      }
+    `,
     GET_PRODUCTS: /* GraphQL */ `
-      query GetProducts {
-        products {
+      query GetProducts($limit: Int, $offset: Int) {
+        products(limit: $limit, offset: $offset) {
           ${PRODUCT_DETAIL_FIELDS}
         }
       }

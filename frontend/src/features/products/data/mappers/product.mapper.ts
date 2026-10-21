@@ -75,6 +75,8 @@ export const ProductMapper = {
       providerName: query.providerName ?? null,
       minPriceCents: query.minPriceCents ?? null,
       maxPriceCents: query.maxPriceCents ?? null,
+      limit: query.limit ?? null,
+      offset: query.offset ?? null,
     }
   },
 }

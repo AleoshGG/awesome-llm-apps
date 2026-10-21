@@ -1,4 +1,4 @@
-import { Button, SearchField } from '@heroui/react'
+import { Button, SearchField, Spinner } from '@heroui/react'
 import type { SortOption } from '../hooks/useCatalogPresentation'
 
 interface CatalogFilterBarProps {
@@ -10,6 +10,7 @@ interface CatalogFilterBarProps {
   onSortChange: (sort: SortOption) => void
   onResetFilters: () => void
   isAgentSearching?: boolean
+  isSearching?: boolean
 }
 
 export function CatalogFilterBar({
@@ -21,6 +22,7 @@ export function CatalogFilterBar({
   onSortChange,
   onResetFilters,
   isAgentSearching = false,
+  isSearching = false,
 }: CatalogFilterBarProps) {
   return (
     <section
@@ -36,7 +38,13 @@ export function CatalogFilterBar({
             aria-label="Buscar productos en la tienda"
           >
             <SearchField.Group>
-              <SearchField.SearchIcon />
+              {isSearching ? (
+                <div className="pl-3 flex items-center justify-center text-blue-600">
+                  <Spinner size="sm" />
+                </div>
+              ) : (
+                <SearchField.SearchIcon />
+              )}
               <SearchField.Input placeholder="Buscar productos por nombre o marca..." />
               <SearchField.ClearButton />
             </SearchField.Group>

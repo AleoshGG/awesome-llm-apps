@@ -1,6 +1,8 @@
 import strawberry
+from sqlalchemy import func, select
 
 from src.core.db.session import AsyncSessionLocal
+from src.features.products.data.models.product_model import ProductModel
 from src.features.products.data.repositories.category_repository_adapter import (
     CategoryRepositoryAdapter,
 )
@@ -40,6 +42,17 @@ class ProductDetailType:
     provider: ProviderType
     media: list[ProductMediaType]
 
+    @strawberry.field
+    def images(self) -> list[str]:
+        return [m.url for m in self.media]
+
+    @strawberry.field
+    def main_image(self) -> str | None:
+        for m in self.media:
+            if m.is_main:
+                return m.url
+        return self.media[0].url if self.media else None
+
     @staticmethod
     def from_domain(entity: ProductDetail) -> "ProductDetailType":
         return ProductDetailType(
@@ -61,6 +74,8 @@ class ProductQueryInput:
     provider_name: str | None = None
     min_price_cents: int | None = None
     max_price_cents: int | None = None
+    limit: int | None = 50
+    offset: int | None = 0
 
     def to_domain(self) -> ProductQueryEntity:
         return ProductQueryEntity(
@@ -70,17 +85,29 @@ class ProductQueryInput:
             provider_name=self.provider_name,
             min_price_cents=self.min_price_cents,
             max_price_cents=self.max_price_cents,
+            limit=self.limit,
+            offset=self.offset,
         )
 
 
 @strawberry.type
 class ProductQuery:
     @strawberry.field
-    async def products(self) -> list[ProductDetailType]:
+    async def products(
+        self,
+        limit: int | None = 50,
+        offset: int | None = 0,
+    ) -> list[ProductDetailType]:
         async with AsyncSessionLocal() as session:
             use_case = ProductFindAllUseCase(ProductRepositoryAdapter(session))
-            entities = await use_case.execute()
+            entities = await use_case.execute(limit=limit, offset=offset)
             return [ProductDetailType.from_domain(entity) for entity in entities]
+
+    @strawberry.field
+    async def products_count(self) -> int:
+        async with AsyncSessionLocal() as session:
+            stmt = select(func.count(ProductModel.id))
+            return (await session.execute(stmt)).scalar() or 0
 
     @strawberry.field
     async def product(self, product_id: str) -> ProductDetailType | None:

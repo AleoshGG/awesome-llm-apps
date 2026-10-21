@@ -29,4 +29,6 @@ export interface ProductQueryInputDto {
   providerName?: string | null
   minPriceCents?: number | null
   maxPriceCents?: number | null
+  limit?: number | null
+  offset?: number | null
 }
