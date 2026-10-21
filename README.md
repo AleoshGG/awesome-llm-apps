@@ -46,6 +46,20 @@ docker compose exec -T db sh -c \
   < backend/src/core/db/seeds/mock_catalog.sql
 ```
 
+O cargar el catálogo real de tiendas VTEX (Línea blanca, Electrónica, Oficina, Abarrotes):
+
+```bash
+docker compose exec -T db sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/src/core/db/seeds/vtex_catalog.sql
+```
+
+Para re-extraer o regenerar el catálogo directamente desde la API de VTEX:
+
+```bash
+PYTHONPATH=backend python backend/src/core/scripts/extract_vtex_catalog.py
+```
+
 ## Backend del agente de ventas
 
 La feature `sales_agent` usa exclusivamente **Gemini Live**, con orquestación propia
