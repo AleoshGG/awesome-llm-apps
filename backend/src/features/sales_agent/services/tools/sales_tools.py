@@ -105,8 +105,9 @@ class SearchProductsTool(UseCaseTool):
 class GetProductDetailsTool(UseCaseTool):
     name = "get_product_details"
     description = (
-        "Consulta los detalles actuales de un producto. price_list_cents es un "
-        "entero interno; divídelo entre 100 antes de comunicar pesos MXN."
+        "Consulta los detalles actuales de un producto y actualiza la tarjeta mostrada en el chat. "
+        "Úsala cuando el cliente pida hablar de otra opción o producto específico, o al presentar "
+        "una recomendación. price_list_cents es un entero interno; divídelo entre 100 antes de comunicar pesos MXN."
     )
     result_key = "product"
     arguments = ProductArguments
@@ -137,6 +138,13 @@ class RemoveFromCartTool(UseCaseTool):
     description = "Elimina del carrito toda la línea del producto indicado."
     result_key = "cart"
     arguments = ProductArguments
+    uses_cart = True
+
+
+class ClearCartTool(UseCaseTool):
+    name = "clear_cart"
+    description = "Vacía por completo el carrito de compras en una sola operación."
+    result_key = "cart"
     uses_cart = True
 
 

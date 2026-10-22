@@ -125,6 +125,16 @@ export const GRAPHQL_OPERATIONS_DOC = {
         }
       }
     `,
+    CLEAR_CART: /* GraphQL */ `
+      mutation ClearCart {
+        clearCart {
+          quantity
+          product {
+            ${PRODUCT_DETAIL_FIELDS}
+          }
+        }
+      }
+    `,
     REGISTER_SALE: /* GraphQL */ `
       mutation RegisterSale {
         registerSale {

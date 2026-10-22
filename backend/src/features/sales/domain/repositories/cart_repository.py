@@ -19,5 +19,9 @@ class CartRepository(ABC):
         pass
 
     @abstractmethod
+    async def clear(self) -> list[CartItem]:
+        pass
+
+    @abstractmethod
     async def find_all(self) -> list[CartItem]:
         pass

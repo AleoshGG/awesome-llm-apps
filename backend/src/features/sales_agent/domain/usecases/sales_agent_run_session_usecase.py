@@ -90,13 +90,19 @@ TOOL_UI = {
     "get_product_details": ("catalog_product", "view"),
     "add_to_cart": ("cart_update", "add"),
     "remove_from_cart": ("cart_update", "remove"),
+    "clear_cart": ("cart_update", "clear"),
     "get_cart": ("cart_update", "view"),
     "build_basic_basket": ("cart_update", "add"),
     "checkout": ("checkout", "checkout"),
 }
 
 
-def _tool_ui(call: ToolCall, phase: str, result: dict | None = None) -> UiCommand | None:
+def _tool_ui(
+    call: ToolCall,
+    phase: str,
+    result: dict | None = None,
+    cross_sell: bool = False,
+) -> UiCommand | None:
     mapping = TOOL_UI.get(call.name)
     if mapping is None:
         return None
@@ -107,8 +113,12 @@ def _tool_ui(call: ToolCall, phase: str, result: dict | None = None) -> UiComman
         products = output.get("products", [])
         payload.update({"source": "text", "criteria": _safe(call.args), "products": products,
                         "summary": f"{len(products)} coincidencias" if phase == "done" else "Buscando en el catálogo"})
+        if cross_sell:
+            payload["cross_sell"] = True
     elif action == "catalog_product":
         payload["product"] = output.get("product")
+        if cross_sell:
+            payload["cross_sell"] = True
     elif action == "cart_update":
         payload["cart"] = output.get("cart")
     else:
@@ -186,18 +196,32 @@ class SalesAgentRunSessionUseCase:
     async def _run_cycle(self, channel, session, memory, seen_calls) -> str:
         tasks: dict[str, asyncio.Task] = {}
         calls: dict[str, ToolCall] = {}
+        cart_add_tasks: set[asyncio.Task] = set()
+        added_to_cart_in_turn = False
         semaphore = asyncio.Semaphore(4)
         visual_task: asyncio.Task | None = None
         failure = asyncio.get_running_loop().create_future()
 
-        async def emit_tool(call: ToolCall, phase: str, result: dict | None = None) -> None:
+        async def emit_tool(
+            call: ToolCall,
+            phase: str,
+            result: dict | None = None,
+            cross_sell: bool = False,
+        ) -> None:
             await channel.send(ToolActivity(call.id, call.name, call.args, phase, result))
-            ui = _tool_ui(call, phase, result)
+            ui = _tool_ui(call, phase, result, cross_sell=cross_sell)
             if ui is not None:
                 await channel.send(ui)
 
         async def run_tool(call: ToolCall) -> None:
-            await emit_tool(call, "running")
+            nonlocal added_to_cart_in_turn
+            if call.name in {"search_products", "get_product_details"} and cart_add_tasks:
+                await asyncio.gather(*list(cart_add_tasks), return_exceptions=True)
+            is_cross_sell = (
+                added_to_cart_in_turn
+                and call.name in {"search_products", "get_product_details"}
+            )
+            await emit_tool(call, "running", cross_sell=is_cross_sell)
             try:
                 tool = self._registry.get(call.name)
                 async with self._tool_slot(tool.uses_cart, semaphore):
@@ -213,8 +237,10 @@ class SalesAgentRunSessionUseCase:
                 result = ToolResult(call.id, call.name, {
                     "message": "No se pudo completar la operación. No la reintentes automáticamente."
                 }, True)
+            if call.name == "add_to_cart" and not result.is_error:
+                added_to_cart_in_turn = True
             phase = "error" if result.is_error else "done"
-            await emit_tool(call, phase, result.output)
+            await emit_tool(call, phase, result.output, cross_sell=is_cross_sell)
             if call.name in TOOL_UI:
                 memory.result(TOOL_UI[call.name][0], {"args": call.args, "result": result.output})
             await session.send_tool_result(result)
@@ -287,19 +313,25 @@ class SalesAgentRunSessionUseCase:
                         visual_task = asyncio.create_task(run_visual(message, uuid4().hex))
                         visual_task.add_done_callback(task_finished)
                 elif isinstance(message, ClientText):
+                    added_to_cart_in_turn = False
                     event = TranscriptChunk("user", uuid4().hex, message.text, True)
                     memory.transcript("user", message.text)
                     await channel.send(event)
                     await session.send_text(message.text)
 
         async def model_to_client() -> None:
+            nonlocal added_to_cart_in_turn
             async for event in session.events():
                 if isinstance(event, ToolCall):
                     if event.id not in seen_calls:
                         seen_calls.add(event.id)
                         calls[event.id] = event
-                        tasks[event.id] = asyncio.create_task(run_tool(event))
-                        tasks[event.id].add_done_callback(task_finished)
+                        task = asyncio.create_task(run_tool(event))
+                        tasks[event.id] = task
+                        if event.name == "add_to_cart":
+                            cart_add_tasks.add(task)
+                            task.add_done_callback(cart_add_tasks.discard)
+                        task.add_done_callback(task_finished)
                 elif isinstance(event, ToolCallCancelled):
                     for call_id in event.ids:
                         task = tasks.get(call_id)
@@ -309,6 +341,8 @@ class SalesAgentRunSessionUseCase:
                             await emit_tool(calls[call_id], "cancelled")
                 else:
                     if isinstance(event, TranscriptChunk) and event.final:
+                        if event.speaker == "user":
+                            added_to_cart_in_turn = False
                         memory.transcript(event.speaker, event.text)
                     await channel.send(event)
                     if isinstance(event, AgentError):

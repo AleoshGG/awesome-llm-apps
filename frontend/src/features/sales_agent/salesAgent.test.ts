@@ -3,7 +3,7 @@ import { SalesAgentRepositoryImpl } from './data/repositories/salesAgent.reposit
 import { bytesToBase64, PcmAudioQueue, resamplePcm16, validateImage } from './data/services/liveMedia'
 import { parseServerEvent } from './data/models/salesAgent.dto'
 import { initialSalesAgentState, salesAgentReducer } from './presentation/state/salesAgentState'
-import { navigationForCommand, productFromAgent } from './presentation/state/agentUi'
+import { cartFromCommand, featuredProductForChat, navigationForCommand, productFromAgent } from './presentation/state/agentUi'
 
 class FakeWebSocket {
   static OPEN = 1
@@ -36,11 +36,24 @@ describe('sales agent contract', () => {
 
   it('deduplicates UI phases and maps navigation and snake-case products', () => {
     const command = { type: 'ui', id: 'x', action: 'catalog_search', phase: 'done', payload: {} } as const
+    const crossSellCommand = { type: 'ui', id: 'x2', action: 'catalog_search', phase: 'done', payload: { cross_sell: true } } as const
     const first = salesAgentReducer(initialSalesAgentState, command)
     expect(salesAgentReducer(first, command)).toBe(first)
     expect(navigationForCommand(command)).toBe('home')
-    expect(productFromAgent({ id: 'p1', name: 'Pan', description: 'Fresco', price_list_cents: 100,
-      category: { id: 'c', name: 'Pan' }, provider: { id: 'v', name: 'Casa' }, media: [] })?.priceListCents).toBe(100)
+    expect(navigationForCommand(crossSellCommand)).toBeNull()
+    const p1 = productFromAgent({ id: 'p1', name: 'Bota Industrial Negra', description: 'Fresco', price_list_cents: 100,
+      category: { id: 'c', name: 'Calzado' }, provider: { id: 'v', name: 'Casa' }, media: [] })!
+    const p2 = productFromAgent({ id: 'p2', name: 'Bota Impermeable Amarilla', description: 'Lluvia', price_list_cents: 200,
+      category: { id: 'c', name: 'Calzado' }, provider: { id: 'v', name: 'Casa' }, media: [] })!
+    expect(p1.priceListCents).toBe(100)
+    expect(featuredProductForChat(null, [p1, p2], [
+      { id: 'm1', speaker: 'agent', text: 'Tengo la Bota Industrial Negra y la Bota Impermeable Amarilla.', final: true, timestamp: '10:00' },
+    ], 0)?.id).toBe('p1')
+    expect(featuredProductForChat(null, [p1, p2], [
+      { id: 'm1', speaker: 'agent', text: 'Tengo la Bota Industrial Negra y la Bota Impermeable Amarilla.', final: true, timestamp: '10:00' },
+      { id: 'm2', speaker: 'user', text: 'Háblame de la otra opción', final: true, timestamp: '10:01' },
+    ], 0)?.id).toBe('p2')
+    expect(cartFromCommand({ type: 'ui', id: 'c1', action: 'cart_update', phase: 'done', payload: { cart: [] } })).toEqual([])
   })
 
   it('connects, pauses, resumes, interrupts and closes through one socket', async () => {

@@ -68,6 +68,15 @@ class CartRepositoryAdapter(CartRepository):
             raise
         return await self.find_all()
 
+    async def clear(self) -> list[CartItem]:
+        try:
+            await self._session.execute(delete(CartItemModel))
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+        return []
+
     async def find_all(self) -> list[CartItem]:
         stmt = (
             select(CartItemModel)

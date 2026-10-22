@@ -14,6 +14,7 @@ from src.features.providers.domain.usecases.provider_find_all_usecase import Pro
 from src.features.sales.data.repositories.cart_repository_adapter import CartRepositoryAdapter
 from src.features.sales.data.repositories.sale_repository_adapter import SaleRepositoryAdapter
 from src.features.sales.domain.usecases.add_product_to_cart_usecase import AddProductToCartUseCase
+from src.features.sales.domain.usecases.clear_cart_usecase import ClearCartUseCase
 from src.features.sales.domain.usecases.get_cart_usecase import GetCartUseCase
 from src.features.sales.domain.usecases.register_sale_usecase import RegisterSaleUseCase
 from src.features.sales.domain.usecases.remove_product_from_cart_usecase import RemoveProductFromCartUseCase
@@ -26,8 +27,9 @@ from src.features.sales_agent.domain.tools.tool_registry import ToolRegistry
 from src.features.sales_agent.domain.usecases.build_basic_basket_usecase import BuildBasicBasketUseCase
 from src.features.sales_agent.domain.usecases.sales_agent_run_session_usecase import SalesAgentRunSessionUseCase
 from src.features.sales_agent.services.tools.sales_tools import (
-    AddToCartTool, BuildBasicBasketTool, CheckoutTool, GetCartTool, GetProductDetailsTool,
-    ListCategoriesTool, ListProvidersTool, RemoveFromCartTool, SearchProductsTool,
+    AddToCartTool, BuildBasicBasketTool, CheckoutTool, ClearCartTool, GetCartTool,
+    GetProductDetailsTool, ListCategoriesTool, ListProvidersTool, RemoveFromCartTool,
+    SearchProductsTool,
 )
 
 
@@ -63,6 +65,9 @@ def build_tool_registry() -> ToolRegistry:
         ))),
         RemoveFromCartTool(usecase_provider(
             lambda session: RemoveProductFromCartUseCase(CartRepositoryAdapter(session))
+        )),
+        ClearCartTool(usecase_provider(
+            lambda session: ClearCartUseCase(CartRepositoryAdapter(session))
         )),
         GetCartTool(usecase_provider(
             lambda session: GetCartUseCase(CartRepositoryAdapter(session))

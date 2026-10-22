@@ -8,7 +8,14 @@ import { PurchasesPage } from './features/sales/presentation/pages/PurchasesPage
 import { SiriChatWidget } from './features/sales_agent/presentation/components/SiriChatWidget'
 import { SiriFloatingButton } from './features/sales_agent/presentation/components/SiriFloatingButton'
 import { useSalesAgentPresentation } from './features/sales_agent/presentation/hooks/useSalesAgentPresentation'
-import { navigationForCommand, productFromAgent, productsFromCommand, saleFromCommand } from './features/sales_agent/presentation/state/agentUi'
+import {
+  cartFromCommand,
+  featuredProductForChat,
+  navigationForCommand,
+  productFromAgent,
+  productsFromCommand,
+  saleFromCommand,
+} from './features/sales_agent/presentation/state/agentUi'
 import type { AgentToolPhase } from './features/sales_agent/domain/entities/salesAgent.entity'
 import type { ProductDetailEntity } from './features/products/domain/entities/productDetail.entity'
 
@@ -19,6 +26,9 @@ export function App() {
   const purchases = usePurchasesPresentation()
   const salesAgent = useSalesAgentPresentation()
   const [agentProducts, setAgentProducts] = useState<ProductDetailEntity[] | null>(null)
+  const [chatProducts, setChatProducts] = useState<ProductDetailEntity[] | null>(null)
+  const [searchMessageIndex, setSearchMessageIndex] = useState<number>(0)
+  const [isCrossSell, setIsCrossSell] = useState<boolean>(false)
   const [agentSearchPhase, setAgentSearchPhase] = useState<AgentToolPhase | null>(null)
   const [agentProduct, setAgentProduct] = useState<ProductDetailEntity | null>(null)
   const [agentCartOperation, setAgentCartOperation] = useState<'add' | 'remove' | 'view' | null>(null)
@@ -34,23 +44,57 @@ export function App() {
     const view = navigationForCommand(command)
     if (view) setActiveView(view)
     if (command.action === 'catalog_search') {
-      setAgentSearchPhase(command.phase)
-      setAgentProduct(null)
-      if (command.phase === 'done') setAgentProducts(productsFromCommand(command))
+      const crossSell = command.payload.cross_sell === true
+      setIsCrossSell(crossSell)
+      if (!crossSell) {
+        setAgentSearchPhase(command.phase)
+        setAgentProduct(null)
+        if (command.phase === 'done') {
+          const found = productsFromCommand(command)
+          setAgentProducts(found)
+          setChatProducts(found)
+          setSearchMessageIndex(salesAgent.messages.length)
+        }
+      } else if (command.phase === 'done') {
+        const found = productsFromCommand(command)
+        if (found.length > 0) {
+          setChatProducts((prev) => {
+            const existing = prev ?? []
+            const seen = new Set(existing.map((item) => item.id))
+            return [...existing, ...found.filter((item) => !seen.has(item.id))]
+          })
+        }
+        setSearchMessageIndex(salesAgent.messages.length)
+      }
     }
     if (command.action === 'catalog_product' && command.phase === 'done') {
+      setIsCrossSell(command.payload.cross_sell === true)
       setAgentProduct(productFromAgent(command.payload.product))
+      setSearchMessageIndex(salesAgent.messages.length)
     }
     if (command.action === 'cart_update') {
       const operation = command.payload.operation
       setAgentCartOperation(operation === 'add' || operation === 'remove' || operation === 'view' ? operation : null)
+      if (operation === 'add' && command.phase === 'running') {
+        setAgentProduct(null)
+        setChatProducts(null)
+        setIsCrossSell(true)
+      }
       const args = command.payload.arguments
       setAgentCartProductId(args && typeof args === 'object' && typeof (args as Record<string, unknown>).product_id === 'string'
         ? (args as Record<string, unknown>).product_id as string : null)
       setAgentCartStatus(command.phase === 'running' ? 'Actualizando tu carrito…'
         : command.phase === 'error' && typeof command.payload.message === 'string' ? command.payload.message
-          : command.phase === 'done' && operation === 'remove' ? 'Producto retirado del carrito.' : null)
-      if (command.phase === 'done') cart.refreshCart()
+          : command.phase === 'done' && operation === 'remove' ? 'Producto retirado del carrito.'
+            : command.phase === 'done' && operation === 'clear' ? 'Carrito vaciado.' : null)
+      if (command.phase === 'done') {
+        const syncedCart = cartFromCommand(command)
+        if (syncedCart !== null) {
+          cart.syncCart(syncedCart)
+        } else {
+          cart.refreshCart()
+        }
+      }
     }
     if (command.action === 'checkout') {
       setAgentCartStatus(command.phase === 'running' ? 'Confirmando tu compra…'
@@ -61,12 +105,20 @@ export function App() {
           purchases.prependNewSale(sale)
           setHighlightedSaleId(sale.id)
         }
-        cart.refreshCart()
+        cart.syncCart([])
         purchases.refreshSales()
       }
     }
   }, [salesAgent.uiCommand])
   // oxlint-enable react/set-state-in-effect react-hooks/exhaustive-deps
+
+  const featuredProduct = featuredProductForChat(
+    agentProduct,
+    chatProducts ?? agentProducts,
+    salesAgent.messages,
+    searchMessageIndex,
+    isCrossSell,
+  )
 
   return (
     <>
@@ -82,7 +134,7 @@ export function App() {
             onAddToCart={cart.addItem}
             agentProducts={agentProducts}
             agentSearchPhase={agentSearchPhase}
-            agentProduct={agentProduct}
+            agentProduct={salesAgent.isOpen ? null : agentProduct}
             onDismissAgentProduct={() => setAgentProduct(null)}
             onClearAgentResults={() => {
               setAgentProducts(null)
@@ -154,7 +206,7 @@ export function App() {
         statusMessage={salesAgent.statusMessage}
         draftText={salesAgent.draftText}
         messages={salesAgent.messages}
-        featuredProduct={agentProduct ?? agentProducts?.[0] ?? null}
+        featuredProduct={featuredProduct}
         onClose={salesAgent.closeWidget}
         onEndSession={salesAgent.endSession}
         onToggleMic={salesAgent.toggleMic}

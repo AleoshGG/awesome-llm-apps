@@ -114,7 +114,8 @@ class SalesAgentWebSocketTests(unittest.TestCase):
             ws.send_json({"type": "text", "text": "pan"})
             self.assertEqual(ws.receive_json()["type"], "transcript")
             ws.send_json({"type": "pause"})
-            self.assertEqual(ws.receive_json(), {"type": "paused"})
+            while (event := ws.receive_json()) != {"type": "paused"}:
+                self.assertIn(event["type"], {"transcript", "audio", "turn_complete"})
             ws.send_json({"type": "resume"})
             self.assertEqual(ws.receive_json(), {"type": "ready"})
             ws.send_json({"type": "close"})

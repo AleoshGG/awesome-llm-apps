@@ -10,6 +10,7 @@ import { ProviderFindAllUseCase } from '../../features/providers/domain/usecases
 import { CartRepositoryImpl } from '../../features/sales/data/repositories/cart.repository.impl'
 import { SaleRepositoryImpl } from '../../features/sales/data/repositories/sale.repository.impl'
 import { AddProductToCartUseCase } from '../../features/sales/domain/usecases/addProductToCart.usecase'
+import { ClearCartUseCase } from '../../features/sales/domain/usecases/clearCart.usecase'
 import { GetCartUseCase } from '../../features/sales/domain/usecases/getCart.usecase'
 import { GetSalesUseCase } from '../../features/sales/domain/usecases/getSales.usecase'
 import { RegisterSaleUseCase } from '../../features/sales/domain/usecases/registerSale.usecase'
@@ -36,6 +37,7 @@ export const useCases = {
     getCart: new GetCartUseCase(cartRepository),
     addProductToCart: new AddProductToCartUseCase(cartRepository),
     removeProductFromCart: new RemoveProductFromCartUseCase(cartRepository),
+    clearCart: new ClearCartUseCase(cartRepository),
     registerSale: new RegisterSaleUseCase(saleRepository),
     getSales: new GetSalesUseCase(saleRepository),
   },

@@ -18,6 +18,7 @@ from src.features.sales.domain.repositories.sale_repository import SaleRepositor
 from src.features.sales.domain.usecases.add_product_to_cart_usecase import (
     AddProductToCartUseCase,
 )
+from src.features.sales.domain.usecases.clear_cart_usecase import ClearCartUseCase
 from src.features.sales.domain.usecases.get_cart_usecase import GetCartUseCase
 from src.features.sales.domain.usecases.get_sales_usecase import GetSalesUseCase
 from src.features.sales.domain.usecases.register_sale_usecase import RegisterSaleUseCase
@@ -90,6 +91,9 @@ class SalesUseCaseTests(unittest.IsolatedAsyncioTestCase):
         )
         self.cart_repository.find_all.assert_awaited_once_with()
         self.cart_repository.remove.assert_awaited_once_with("product-1")
+        self.cart_repository.clear.return_value = []
+        self.assertEqual(await ClearCartUseCase(self.cart_repository).execute(), [])
+        self.cart_repository.clear.assert_awaited_once_with()
 
     async def test_register_sale_returns_repository_result(self) -> None:
         expected = Sale(

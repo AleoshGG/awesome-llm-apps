@@ -22,7 +22,7 @@ from src.features.sales_agent.data.services.gemini_realtime_voice_service_adapte
 )
 from src.features.sales_agent.domain.entities.agent_event_entity import (
     AudioChunk, Interrupted, Paused, Ready, ToolActivity, ToolCall, ToolCallCancelled,
-    TranscriptChunk, TurnComplete,
+    TranscriptChunk, TurnComplete, UiCommand,
 )
 from src.features.sales_agent.domain.entities.client_input_entity import (
     ClientAudio, ClientClose, ClientPause, ClientResume, ClientText,
@@ -102,9 +102,11 @@ class EventMapperTests(unittest.TestCase):
 
     def test_all_tool_schemas_can_be_declared_to_gemini(self):
         declarations = to_gemini_tools(build_tool_registry().definitions())[0].function_declarations
-        self.assertEqual(len(declarations), 9)
+        self.assertEqual(len(declarations), 10)
         basket = next(d for d in declarations if d.name == "build_basic_basket")
         self.assertNotIn("required", basket.parameters_json_schema)
+        clear_cart = next(d for d in declarations if d.name == "clear_cart")
+        self.assertNotIn("required", clear_cart.parameters_json_schema)
         checkout = next(d for d in declarations if d.name == "checkout")
         self.assertEqual(checkout.parameters_json_schema["required"], ["confirmed"])
         self.assertEqual(checkout.behavior, types.Behavior.NON_BLOCKING)
@@ -125,6 +127,13 @@ class EventMapperTests(unittest.TestCase):
                          {"products": [{"id": "p1"}]})
         self.assertEqual((event.action, event.payload["products"][0]["id"]),
                          ("catalog_search", "p1"))
+        self.assertNotIn("cross_sell", event.payload)
+        cross_sell = _tool_ui(ToolCall("s2", "search_products", {"name": "leche"}), "done",
+                              {"products": [{"id": "p2"}]}, cross_sell=True)
+        self.assertTrue(cross_sell.payload["cross_sell"])
+        cleared = _tool_ui(ToolCall("c", "clear_cart", {}), "done", {"cart": []})
+        self.assertEqual((cleared.action, cleared.payload["operation"]),
+                         ("cart_update", "clear"))
         basket = _tool_ui(ToolCall("b", "build_basic_basket", {}), "done", {
             "cart": [{"product": {"id": "p1"}, "quantity": 1}],
             "basket": {"coverage": {"matched": 1, "requested": 24}},
@@ -464,6 +473,37 @@ class OrchestratorTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(TimeoutError):
             await self.task
         self.assertTrue(self.session.closed)
+
+    async def test_add_to_cart_precedes_cross_sell_search_in_same_turn(self):
+        order = []
+
+        async def add_exec(args):
+            await asyncio.sleep(0.01)
+            order.append("add")
+            return {"cart": [{"product": {"id": "p1"}, "quantity": 1}]}
+
+        async def search_exec(args):
+            order.append("search")
+            return {"products": [{"id": "p2"}]}
+
+        await self.start([
+            FakeTool("add_to_cart", add_exec, uses_cart=True),
+            FakeTool("search_products", search_exec),
+        ])
+        await self.session.incoming.put(ToolCall("1", "add_to_cart", {"product_id": "p1"}))
+        await self.session.incoming.put(ToolCall("2", "search_products", {"name": "complemento"}))
+        await self.session.results.get()
+        await self.session.results.get()
+        self.assertEqual(order, ["add", "search"])
+        ui_events = []
+        while not self.channel.events.empty():
+            ev = await self.channel.events.get()
+            if isinstance(ev, UiCommand) and ev.phase == "done":
+                ui_events.append(ev)
+        self.assertEqual([e.action for e in ui_events], ["cart_update", "catalog_search"])
+        self.assertTrue(ui_events[1].payload.get("cross_sell"))
+        await self.channel.inputs.put(ClientClose())
+        await self.task
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ export interface AgentToolCallEntity {
     | 'list_providers'
     | 'add_to_cart'
     | 'remove_from_cart'
+    | 'clear_cart'
     | 'get_cart'
     | 'checkout'
   argsSummary: string

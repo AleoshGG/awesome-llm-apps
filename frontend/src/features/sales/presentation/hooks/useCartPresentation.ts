@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCases } from '../../../../core/di/useCasesContainer'
 import type { ProductDetailEntity } from '../../../products/domain/entities/productDetail.entity'
 import type { CartItemEntity } from '../../domain/entities/cartItem.entity'
@@ -25,6 +25,7 @@ export interface UseCartPresentationReturn {
   setCheckoutStep: (step: CheckoutStep) => void
   completePurchase: (onSaleCreated?: (sale: SaleEntity) => void) => void
   refreshCart: () => void
+  syncCart: (nextItems: CartItemEntity[]) => void
 }
 
 /**
@@ -40,6 +41,7 @@ export function useCartPresentation(): UseCartPresentationReturn {
   const [lastCompletedSale, setLastCompletedSale] =
     useState<SaleEntity | null>(null)
   const [reloadTick, setReloadTick] = useState<number>(0)
+  const hasLoadedRef = useRef<boolean>(false)
 
   useEffect(() => {
     let active = true
@@ -48,6 +50,7 @@ export function useCartPresentation(): UseCartPresentationReturn {
       .execute()
       .then((cartItems) => {
         if (!active) return
+        hasLoadedRef.current = true
         setItems(cartItems)
         setError(null)
         setIsLoading(false)
@@ -172,16 +175,8 @@ export function useCartPresentation(): UseCartPresentationReturn {
     setError(null)
     setIsSubmitting(true)
 
-    const productIds = items.map((item) => item.product.id)
-
-    void (async () => {
-      let latestCart: CartItemEntity[] = items
-      for (const productId of productIds) {
-        latestCart =
-          await useCases.sales.removeProductFromCart.execute(productId)
-      }
-      return latestCart
-    })()
+    void useCases.sales.clearCart
+      .execute()
       .then((updatedCart) => {
         setItems(updatedCart)
         setCheckoutStep('review')
@@ -224,11 +219,20 @@ export function useCartPresentation(): UseCartPresentationReturn {
       })
   }
 
-  const refreshCart = () => {
-    setIsLoading(true)
+  const refreshCart = useCallback(() => {
+    if (!hasLoadedRef.current) {
+      setIsLoading(true)
+    }
     setError(null)
     setReloadTick((prev) => prev + 1)
-  }
+  }, [])
+
+  const syncCart = useCallback((nextItems: CartItemEntity[]) => {
+    hasLoadedRef.current = true
+    setItems(nextItems)
+    setError(null)
+    setIsLoading(false)
+  }, [])
 
   return {
     items,
@@ -249,5 +253,6 @@ export function useCartPresentation(): UseCartPresentationReturn {
     setCheckoutStep,
     completePurchase,
     refreshCart,
+    syncCart,
   }
 }

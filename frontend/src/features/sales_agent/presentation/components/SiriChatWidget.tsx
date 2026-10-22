@@ -36,6 +36,8 @@ const STATUS: Record<AgentConnectionPhase, string> = {
 export function SiriChatWidget(props: SiriChatWidgetProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const conversationRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pickingRef = useRef(false)
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = props.cameraStream
@@ -60,6 +62,37 @@ export function SiriChatWidget(props: SiriChatWidgetProps) {
     if (file) props.onSelectImage(file)
     event.target.value = ''
   }
+  const handlePickImage = async () => {
+    if (props.visualSearchActive || pickingRef.current) return
+    pickingRef.current = true
+    try {
+      const response = await fetch('/__demo_pick_image')
+      const contentType = response.headers.get('content-type') ?? ''
+      if (!response.ok || !contentType.includes('application/json')) {
+        fileInputRef.current?.click()
+        return
+      }
+      const payload = (await response.json()) as {
+        cancelled?: boolean
+        name?: string
+        type?: string
+        data?: string
+      }
+      if (payload.cancelled || !payload.data) return
+      const binary = atob(payload.data)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i)
+      }
+      const mimeType = payload.type ?? 'image/jpeg'
+      const file = new File([bytes], payload.name ?? 'demo.jpg', { type: mimeType })
+      props.onSelectImage(file)
+    } catch {
+      fileInputRef.current?.click()
+    } finally {
+      pickingRef.current = false
+    }
+  }
 
   return (
     <aside aria-label="Conversación de ayuda en compras" className="fixed inset-x-0 bottom-0 z-50 flex h-[92dvh] max-h-[760px] w-full flex-col overflow-hidden rounded-t-[28px] border border-blue-200/90 bg-white/98 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-22 sm:left-5 sm:h-auto sm:max-h-[calc(100dvh-7rem)] sm:w-[370px] sm:rounded-3xl">
@@ -79,10 +112,15 @@ export function SiriChatWidget(props: SiriChatWidgetProps) {
           <Button size="sm" variant={props.isCameraActive ? 'primary' : 'secondary'} onPress={props.onToggleCamera} isDisabled={props.visualSearchActive} className="flex-1">
             {props.isCameraActive ? 'Cerrar cámara' : 'Usar cámara'}
           </Button>
-          <label className={`col-span-2 cursor-pointer rounded-lg px-2.5 py-2 text-center text-xs font-semibold sm:col-span-1 sm:py-1.5 ${props.visualSearchActive ? 'pointer-events-none opacity-50' : 'bg-white/12 text-blue-100 hover:bg-white/20'}`}>
+          <button
+            type="button"
+            disabled={props.visualSearchActive}
+            onClick={() => { void handlePickImage() }}
+            className={`col-span-2 cursor-pointer rounded-lg px-2.5 py-2 text-center text-xs font-semibold sm:col-span-1 sm:py-1.5 ${props.visualSearchActive ? 'pointer-events-none opacity-50' : 'bg-white/12 text-blue-100 hover:bg-white/20'}`}
+          >
             Elegir imagen
-            <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" disabled={props.visualSearchActive} onChange={handleFile} />
-          </label>
+          </button>
+          <input ref={fileInputRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" disabled={props.visualSearchActive} onChange={handleFile} />
         </div>
 
         {props.isCameraActive && (

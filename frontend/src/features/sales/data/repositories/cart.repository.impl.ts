@@ -17,6 +17,10 @@ interface RemoveProductFromCartResponse {
   removeProductFromCart: CartItemDto[]
 }
 
+interface ClearCartResponse {
+  clearCart: CartItemDto[]
+}
+
 export class CartRepositoryImpl implements CartRepository {
   async getCart(): Promise<CartItemEntity[]> {
     const data = await graphqlRequest<GetCartResponse>(
@@ -45,5 +49,12 @@ export class CartRepositoryImpl implements CartRepository {
       { productId: string }
     >(GRAPHQL_OPERATIONS_DOC.mutations.REMOVE_PRODUCT_FROM_CART, { productId })
     return data.removeProductFromCart.map(CartMapper.toDomain)
+  }
+
+  async clearCart(): Promise<CartItemEntity[]> {
+    const data = await graphqlRequest<ClearCartResponse>(
+      GRAPHQL_OPERATIONS_DOC.mutations.CLEAR_CART,
+    )
+    return data.clearCart.map(CartMapper.toDomain)
   }
 }
